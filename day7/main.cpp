@@ -26,7 +26,7 @@ struct Not;
 struct LShift;
 struct RShift;
 
-typedef std::variant<int, And, Or, LShift, RShift, Not> instruction;
+typedef std::variant<unsigned short, And, Or, LShift, RShift, Not> instruction;
 
 typedef struct And {
     std::string lhs;
@@ -40,12 +40,12 @@ typedef struct Or {
 
 typedef struct LShift {
     std::string name;
-    int amount;
+    unsigned short amount;
 } LShift;
 
 typedef struct RShift {
     std::string name;
-    int amount;
+    unsigned short amount;
 } RShift;
 
 typedef struct Not {
@@ -69,14 +69,14 @@ std::vector<std::string> split(const std::string &delim, const std::string &str)
     return cont;
 }
 
-int interpret(const std::unordered_map<std::string, instruction> &map, const std::string &name) {
+unsigned short interpret(const std::unordered_map<std::string, instruction> &map, const std::string &name) {
     return std::visit(overload{
-                              [](int i) { return i; },
-                              [map](And a) { return interpret(map, a.lhs) & interpret(map, a.rhs); },
-                              [map](Or o) { return interpret(map, o.lhs) | interpret(map, o.rhs); },
-                              [map](LShift lshift) { return interpret(map, lshift.name) << lshift.amount; },
-                              [map](RShift rshift) { return interpret(map, rshift.name) >> rshift.amount; },
-                              [map](Not n) { return interpret(map, n.name); },
+                              [](unsigned short i) { return i; },
+                              [map](And a) { return static_cast<unsigned short>(interpret(map, a.lhs) & interpret(map, a.rhs)); },
+                              [map](Or a) { return static_cast<unsigned short>(interpret(map, a.lhs) & interpret(map, a.rhs)); },
+                              [map](LShift lshift) { return static_cast<unsigned short>(interpret(map, lshift.name) << lshift.amount); },
+                              [map](RShift rshift) { return static_cast<unsigned short>(interpret(map, rshift.name) << rshift.amount); },
+                              [map](Not n) { return static_cast<unsigned short>(~interpret(map, n.name)); },
                       },
                       map.at(name));
 }
@@ -93,12 +93,12 @@ instruction parse_instruction(const std::string &s) {
         return Or{lr[0], lr[1]};
     } else if (contains("LSHIFT", s)) {
         auto lr = split(" LSHIFT ", s);
-        return LShift{lr[0], std::stoi(lr[1])};
+        return LShift{lr[0], static_cast<unsigned short>(std::stoi(lr[1]))};
     } else if (contains("RSHIFT", s)) {
         auto lr = split(" RSHIFT ", s);
-        return RShift{lr[0], std::stoi(lr[1])};
+        return RShift{lr[0], static_cast<unsigned short>(std::stoi(lr[1]))};
     } else {
-        return std::stoi(s);
+        return static_cast<unsigned short>(std::stoi(s));
     }
 }
 
@@ -115,6 +115,6 @@ int main() {
         auto test = split("HELLO AND BYE", " AND ");
     }
 
-    printf("%d\n", interpret(map, "h"));
+    printf("%u\n", interpret(map, "h"));
     return 0;
 }
