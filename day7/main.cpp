@@ -40,12 +40,12 @@ typedef struct Or {
 
 typedef struct LShift {
     std::string name;
-    unsigned short amount;
+    int amount;
 } LShift;
 
 typedef struct RShift {
     std::string name;
-    unsigned short amount;
+    int amount;
 } RShift;
 
 typedef struct Not {
@@ -70,7 +70,6 @@ std::vector<std::string> split(const std::string &delim, const std::string &str)
 }
 
 int interpret(const std::unordered_map<std::string, instruction> &map, const std::string &name) {
-    //    auto val = map.at(name);
     return std::visit(overload{
                               [](int i) { return i; },
                               [map](And a) { return interpret(map, a.lhs) & interpret(map, a.rhs); },
