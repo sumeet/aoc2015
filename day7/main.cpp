@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <dbg.h>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -10,6 +11,15 @@ template<class... Ts>
 struct overload : Ts... { using Ts::operator()...; };
 template<class... Ts>
 overload(Ts...) -> overload<Ts...>;
+
+const char *SAMPLE = R"""(123 -> x
+456 -> y
+x AND y -> d
+x OR y -> e
+x LSHIFT 2 -> f
+y RSHIFT 2 -> g
+NOT x -> h
+NOT y -> i)""";
 
 const char *INPUT = R"""(NOT dq -> dr
 kg OR kf -> kh
@@ -383,6 +393,46 @@ typedef struct Not {
     std::string name;
 } Not;
 
+std::ostream &operator<<(std::ostream &out, const instruction instruction) {
+    std::visit(overload{
+                       [&out](unsigned short i) { out << i; },
+                       [&out](std::string name) { out << name; },
+                       [&out](And a) { out << "And(" << *a.lhs << "," << *a.rhs << ")"; },
+                       [&out](Or o) { out << "Or(" << *o.lhs << "," << *o.rhs << ")"; },
+                       [&out](LShift lshift) { out << lshift; },
+                       [&out](RShift rshift) { out << rshift; },
+                       [&out](Not n) { out << n; },
+               },
+               instruction);
+    return out;
+}
+
+std::ostream &operator<<(std::ostream &out, const And &a) {
+    out << "And(" << *a.lhs << "," << *a.rhs << ")";
+    return out;
+}
+
+std::ostream &operator<<(std::ostream &out, const Or &o) {
+    out << "Or(" << *o.lhs << "," << *o.rhs << ")";
+    return out;
+}
+
+std::ostream &operator<<(std::ostream &out, const LShift &lshift) {
+    out << "LShift(" << lshift.name << "," << lshift.amount << ")";
+    return out;
+}
+
+std::ostream &operator<<(std::ostream &out, const RShift &rshift) {
+    out << "RShift(" << rshift.name << "," << rshift.amount << ")";
+    return out;
+}
+
+std::ostream &operator<<(std::ostream &out, const Not &n) {
+    out << "Not(" << n.name << ")";
+    return out;
+}
+
+
 bool contains(const std::string &needle, const std::string &haystack) {
     return haystack.find(needle) != std::string::npos;
 }
@@ -400,32 +450,39 @@ std::vector<std::string> split(const std::string &delim, const std::string &str)
     return cont;
 }
 
-unsigned short interpret(const std::unordered_map<std::string, instruction> &map, const instruction &instruction) {
-    return std::visit(overload{
-                              [](unsigned short i) { return i; },
-                              [map](std::string name) { return interpret(map, map.at(name)); },
-                              [map](And a) { return static_cast<unsigned short>(interpret(map, *a.lhs) & interpret(map, *a.rhs)); },
-                              [map](Or a) { return static_cast<unsigned short>(interpret(map, *a.lhs) & interpret(map, *a.rhs)); },
-                              [map](LShift lshift) { return static_cast<unsigned short>(interpret(map, lshift.name) << lshift.amount); },
-                              [map](RShift rshift) { return static_cast<unsigned short>(interpret(map, rshift.name) << rshift.amount); },
-                              [map](Not n) { return static_cast<unsigned short>(~interpret(map, n.name)); },
-                      },
-                      instruction);
+std::string to_string(const instruction &instruction) {
+    auto str = new std::string;
+    std::ostringstream ss(*str);
+    ss << instruction;
+    return *str;
 }
 
+unsigned short interpret(std::unordered_map<std::string, instruction> *map, const instruction &instruction) {
+    static auto cache = new std::unordered_map<std::string, unsigned short>;
+    auto instruction_string = to_string(instruction);
+    if (cache->contains(instruction_string)) {
+        return cache->at(instruction_string);
+    }
+    auto value = std::visit(overload{
+                                    [](unsigned short i) { return i; },
+                                    [map](std::string name) {
+                                        {
+                                            return interpret(map, map->at(name));
+                                            //                                      map->insert({name, val});
+                                            //                                      return val;
+                                        }
+                                    },
+                                    [map](And a) { return static_cast<unsigned short>(interpret(map, *a.lhs) & interpret(map, *a.rhs)); },
+                                    [map](Or a) { return static_cast<unsigned short>(interpret(map, *a.lhs) & interpret(map, *a.rhs)); },
+                                    [map](LShift lshift) { return static_cast<unsigned short>(interpret(map, lshift.name) << lshift.amount); },
+                                    [map](RShift rshift) { return static_cast<unsigned short>(interpret(map, rshift.name) >> rshift.amount); },
+                                    [map](Not n) { return static_cast<unsigned short>(~interpret(map, n.name)); },
+                            },
+                            instruction);
+    cache->insert({instruction_string, value});
+    return value;
+}
 
-//unsigned short interpret(const std::unordered_map<std::string, instruction> &map, const std::string &name) {
-//    return std::visit(overload{
-//                              [](unsigned short i) { return i; },
-//                              [map](std::string inner_name) { return interpret(map, inner_name); },
-//                              [map](And a) { return static_cast<unsigned short>(interpret(map, a.lhs) & interpret(map, a.rhs)); },
-//                              [map](Or a) { return static_cast<unsigned short>(interpret(map, a.lhs) & interpret(map, a.rhs)); },
-//                              [map](LShift lshift) { return static_cast<unsigned short>(interpret(map, lshift.name) << lshift.amount); },
-//                              [map](RShift rshift) { return static_cast<unsigned short>(interpret(map, rshift.name) << rshift.amount); },
-//                              [map](Not n) { return static_cast<unsigned short>(~interpret(map, n.name)); },
-//                      },
-//                      map.at(name));
-//}
 
 instruction parse_instruction(const std::string s) {
     if (contains("NOT", s)) {
@@ -433,14 +490,18 @@ instruction parse_instruction(const std::string s) {
         return Not{name};
     } else if (contains("AND", s)) {
         auto lr = split(" AND ", s);
-        auto lhs = parse_instruction(lr[0]);
-        auto rhs = parse_instruction(lr[1]);
-        return And{&lhs, &rhs};
+        auto *lhs = new instruction;
+        auto *rhs = new instruction;
+        *lhs = parse_instruction(lr[0]);
+        *rhs = parse_instruction(lr[1]);
+        return And{lhs, rhs};
     } else if (contains("OR", s)) {
         auto lr = split(" OR ", s);
-        auto lhs = parse_instruction(lr[0]);
-        auto rhs = parse_instruction(lr[1]);
-        return Or{&lhs, &rhs};
+        auto *lhs = new instruction;
+        auto *rhs = new instruction;
+        *lhs = parse_instruction(lr[0]);
+        *rhs = parse_instruction(lr[1]);
+        return Or{lhs, rhs};
     } else if (contains("LSHIFT", s)) {
         auto lr = split(" LSHIFT ", s);
         return LShift{lr[0], static_cast<unsigned short>(std::stoi(lr[1]))};
@@ -459,7 +520,7 @@ instruction parse_instruction(const std::string s) {
 int main() {
     std::unordered_map<std::string, instruction> map;
 
-    std::stringstream ss(INPUT);
+    std::istringstream ss(INPUT);
     std::string line;
     while (std::getline(ss, line, '\n')) {
         auto sides = split(" -> ", line);
@@ -469,6 +530,6 @@ int main() {
         auto test = split("HELLO AND BYE", " AND ");
     }
 
-    printf("%u\n", interpret(map, "a"));
+    printf("%u\n", interpret(&map, "he"));
     return 0;
 }
