@@ -370,6 +370,9 @@ struct RShift;
 typedef std::variant<unsigned short, std::string, And, Or, LShift, RShift, Not> instruction;
 
 typedef struct And {
+    // XXX: the program worked before i added this, trying to get rid of the raw pointers
+    std::unique_ptr<instruction> l;
+    std::unique_ptr<instruction> r;
     instruction *lhs;
     instruction *rhs;
 } And;
@@ -393,15 +396,15 @@ typedef struct Not {
     std::string name;
 } Not;
 
-std::ostream &operator<<(std::ostream &out, const instruction instruction) {
+std::ostream &operator<<(std::ostream &out, const instruction &instruction) {
     std::visit(overload{
-                       [&out](unsigned short i) { out << i; },
-                       [&out](std::string name) { out << name; },
-                       [&out](And a) { out << "And(" << *a.lhs << "," << *a.rhs << ")"; },
-                       [&out](Or o) { out << "Or(" << *o.lhs << "," << *o.rhs << ")"; },
-                       [&out](LShift lshift) { out << "LShift(" << lshift.name << "," << lshift.amount << ")"; },
-                       [&out](RShift rshift) { out << "RShift(" << rshift.name << "," << rshift.amount << ")"; },
-                       [&out](Not n) { out << "Not(" << n.name << ")"; },
+                       [&out](const unsigned short &i) { out << i; },
+                       [&out](const std::string &name) { out << name; },
+                       [&out](const And &a) { out << "And(" << a.l << "," << a.r << ")"; },
+                       [&out](const Or &o) { out << "Or(" << *o.lhs << "," << *o.rhs << ")"; },
+                       [&out](const LShift &lshift) { out << "LShift(" << lshift.name << "," << lshift.amount << ")"; },
+                       [&out](const RShift &rshift) { out << "RShift(" << rshift.name << "," << rshift.amount << ")"; },
+                       [&out](const Not &n) { out << "Not(" << n.name << ")"; },
                },
                instruction);
     return out;
@@ -424,20 +427,20 @@ std::vector<std::string> split(const std::string &delim, const std::string &str)
     return cont;
 }
 
-unsigned short interpret(std::unordered_map<std::string, instruction> *map, const instruction &instruction) {
+unsigned short interpret(const std::unordered_map<std::string, instruction> &map, const instruction &instruction) {
     static auto cache = std::unordered_map<std::string, unsigned short>{};
     auto instruction_string = boost::lexical_cast<std::string>(instruction);
     if (cache.contains(instruction_string)) {
         return cache.at(instruction_string);
     }
     auto value = std::visit(overload{
-                                    [](unsigned short i) { return i; },
-                                    [map](std::string name) { return interpret(map, map->at(name)); },
-                                    [map](And a) { return static_cast<unsigned short>(interpret(map, *a.lhs) & interpret(map, *a.rhs)); },
-                                    [map](Or a) { return static_cast<unsigned short>(interpret(map, *a.lhs) | interpret(map, *a.rhs)); },
-                                    [map](LShift lshift) { return static_cast<unsigned short>(interpret(map, lshift.name) << lshift.amount); },
-                                    [map](RShift rshift) { return static_cast<unsigned short>(interpret(map, rshift.name) >> rshift.amount); },
-                                    [map](Not n) { return static_cast<unsigned short>(~interpret(map, n.name)); },
+                                    [](const unsigned short &i) { return i; },
+                                    [&map](const std::string &name) { return interpret(map, map.at(name)); },
+                                    [&map](const And &a) { return static_cast<unsigned short>(interpret(map, *a.lhs) & interpret(map, *a.rhs)); },
+                                    [&map](const Or &o) { return static_cast<unsigned short>(interpret(map, *o.lhs) | interpret(map, *o.rhs)); },
+                                    [&map](const LShift &lshift) { return static_cast<unsigned short>(interpret(map, lshift.name) << lshift.amount); },
+                                    [&map](const RShift &rshift) { return static_cast<unsigned short>(interpret(map, rshift.name) >> rshift.amount); },
+                                    [&map](const Not &n) { return static_cast<unsigned short>(~interpret(map, n.name)); },
                             },
                             instruction);
     cache.insert({instruction_string, value});
@@ -455,7 +458,9 @@ instruction parse_instruction(const std::string s) {
         auto *rhs = new instruction;
         *lhs = parse_instruction(lr[0]);
         *rhs = parse_instruction(lr[1]);
-        return And{lhs, rhs};
+        auto l = std::make_unique<instruction>(parse_instruction(lr[0]));
+        auto r = std::make_unique<instruction>(parse_instruction(lr[0]));
+        return And{std::move(l), std::move(r), lhs, rhs};
     } else if (contains("OR", s)) {
         auto lr = split(" OR ", s);
         auto *lhs = new instruction;
@@ -490,6 +495,6 @@ int main() {
         map.insert({name, parse_instruction(instruction)});
     }
 
-    dbg(interpret(&map, "a"));
+    dbg(interpret(map, "a"));
     return 0;
 }
