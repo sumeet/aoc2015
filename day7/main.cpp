@@ -1,7 +1,7 @@
 #include <algorithm>
+#include <boost/lexical_cast.hpp>
 #include <dbg.h>
 #include <iostream>
-#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <variant>
@@ -399,39 +399,13 @@ std::ostream &operator<<(std::ostream &out, const instruction instruction) {
                        [&out](std::string name) { out << name; },
                        [&out](And a) { out << "And(" << *a.lhs << "," << *a.rhs << ")"; },
                        [&out](Or o) { out << "Or(" << *o.lhs << "," << *o.rhs << ")"; },
-                       [&out](LShift lshift) { out << lshift; },
-                       [&out](RShift rshift) { out << rshift; },
-                       [&out](Not n) { out << n; },
+                       [&out](LShift lshift) { out << "LShift(" << lshift.name << "," << lshift.amount << ")"; },
+                       [&out](RShift rshift) { out << "RShift(" << rshift.name << "," << rshift.amount << ")"; },
+                       [&out](Not n) { out << "Not(" << n.name << ")"; },
                },
                instruction);
     return out;
 }
-
-std::ostream &operator<<(std::ostream &out, const And &a) {
-    out << "And(" << *a.lhs << "," << *a.rhs << ")";
-    return out;
-}
-
-std::ostream &operator<<(std::ostream &out, const Or &o) {
-    out << "Or(" << *o.lhs << "," << *o.rhs << ")";
-    return out;
-}
-
-std::ostream &operator<<(std::ostream &out, const LShift &lshift) {
-    out << "LShift(" << lshift.name << "," << lshift.amount << ")";
-    return out;
-}
-
-std::ostream &operator<<(std::ostream &out, const RShift &rshift) {
-    out << "RShift(" << rshift.name << "," << rshift.amount << ")";
-    return out;
-}
-
-std::ostream &operator<<(std::ostream &out, const Not &n) {
-    out << "Not(" << n.name << ")";
-    return out;
-}
-
 
 bool contains(const std::string &needle, const std::string &haystack) {
     return haystack.find(needle) != std::string::npos;
@@ -450,36 +424,23 @@ std::vector<std::string> split(const std::string &delim, const std::string &str)
     return cont;
 }
 
-std::string to_string(const instruction &instruction) {
-    auto str = new std::string;
-    std::ostringstream ss(*str);
-    ss << instruction;
-    return *str;
-}
-
 unsigned short interpret(std::unordered_map<std::string, instruction> *map, const instruction &instruction) {
-    static auto cache = new std::unordered_map<std::string, unsigned short>;
-    auto instruction_string = to_string(instruction);
-    if (cache->contains(instruction_string)) {
-        return cache->at(instruction_string);
+    static auto cache = std::unordered_map<std::string, unsigned short>{};
+    auto instruction_string = boost::lexical_cast<std::string>(instruction);
+    if (cache.contains(instruction_string)) {
+        return cache.at(instruction_string);
     }
     auto value = std::visit(overload{
                                     [](unsigned short i) { return i; },
-                                    [map](std::string name) {
-                                        {
-                                            return interpret(map, map->at(name));
-                                            //                                      map->insert({name, val});
-                                            //                                      return val;
-                                        }
-                                    },
+                                    [map](std::string name) { return interpret(map, map->at(name)); },
                                     [map](And a) { return static_cast<unsigned short>(interpret(map, *a.lhs) & interpret(map, *a.rhs)); },
-                                    [map](Or a) { return static_cast<unsigned short>(interpret(map, *a.lhs) & interpret(map, *a.rhs)); },
+                                    [map](Or a) { return static_cast<unsigned short>(interpret(map, *a.lhs) | interpret(map, *a.rhs)); },
                                     [map](LShift lshift) { return static_cast<unsigned short>(interpret(map, lshift.name) << lshift.amount); },
                                     [map](RShift rshift) { return static_cast<unsigned short>(interpret(map, rshift.name) >> rshift.amount); },
                                     [map](Not n) { return static_cast<unsigned short>(~interpret(map, n.name)); },
                             },
                             instruction);
-    cache->insert({instruction_string, value});
+    cache.insert({instruction_string, value});
     return value;
 }
 
@@ -527,9 +488,8 @@ int main() {
         auto name = sides[1];
         auto instruction = sides[0];
         map.insert({name, parse_instruction(instruction)});
-        auto test = split("HELLO AND BYE", " AND ");
     }
 
-    printf("%u\n", interpret(&map, "he"));
+    dbg(interpret(&map, "a"));
     return 0;
 }
