@@ -370,16 +370,13 @@ struct RShift;
 typedef std::variant<unsigned short, std::string, And, Or, LShift, RShift, Not> instruction;
 
 typedef struct And {
-    // XXX: the program worked before i added this, trying to get rid of the raw pointers
-    std::unique_ptr<instruction> l;
-    std::unique_ptr<instruction> r;
-    instruction *lhs;
-    instruction *rhs;
+    std::unique_ptr<instruction> lhs;
+    std::unique_ptr<instruction> rhs;
 } And;
 
 typedef struct Or {
-    instruction *lhs;
-    instruction *rhs;
+    std::unique_ptr<instruction> lhs;
+    std::unique_ptr<instruction> rhs;
 } Or;
 
 typedef struct LShift {
@@ -400,7 +397,7 @@ std::ostream &operator<<(std::ostream &out, const instruction &instruction) {
     std::visit(overload{
                        [&out](const unsigned short &i) { out << i; },
                        [&out](const std::string &name) { out << name; },
-                       [&out](const And &a) { out << "And(" << a.l << "," << a.r << ")"; },
+                       [&out](const And &a) { out << "And(" << a.lhs << "," << a.rhs << ")"; },
                        [&out](const Or &o) { out << "Or(" << *o.lhs << "," << *o.rhs << ")"; },
                        [&out](const LShift &lshift) { out << "LShift(" << lshift.name << "," << lshift.amount << ")"; },
                        [&out](const RShift &rshift) { out << "RShift(" << rshift.name << "," << rshift.amount << ")"; },
@@ -416,7 +413,7 @@ bool contains(const std::string &needle, const std::string &haystack) {
 
 std::vector<std::string> split(const std::string &delim, const std::string &str) {
     std::vector<std::string> cont;
-    int current, previous = 0;
+    unsigned long current, previous = 0;
     current = str.find(delim);
     while (current != std::string::npos) {
         cont.push_back(str.substr(previous, current - previous));
@@ -448,26 +445,20 @@ unsigned short interpret(const std::unordered_map<std::string, instruction> &map
 }
 
 
-instruction parse_instruction(const std::string s) {
+instruction parse_instruction(const std::string &s) {
     if (contains("NOT", s)) {
         auto name = split("NOT ", s)[1];
         return Not{name};
     } else if (contains("AND", s)) {
         auto lr = split(" AND ", s);
-        auto *lhs = new instruction;
-        auto *rhs = new instruction;
-        *lhs = parse_instruction(lr[0]);
-        *rhs = parse_instruction(lr[1]);
-        auto l = std::make_unique<instruction>(parse_instruction(lr[0]));
-        auto r = std::make_unique<instruction>(parse_instruction(lr[0]));
-        return And{std::move(l), std::move(r), lhs, rhs};
+        auto lhs = std::make_unique<instruction>(parse_instruction(lr[0]));
+        auto rhs = std::make_unique<instruction>(parse_instruction(lr[1]));
+        return And{std::move(lhs), std::move(rhs)};
     } else if (contains("OR", s)) {
         auto lr = split(" OR ", s);
-        auto *lhs = new instruction;
-        auto *rhs = new instruction;
-        *lhs = parse_instruction(lr[0]);
-        *rhs = parse_instruction(lr[1]);
-        return Or{lhs, rhs};
+        auto lhs = std::make_unique<instruction>(parse_instruction(lr[0]));
+        auto rhs = std::make_unique<instruction>(parse_instruction(lr[1]));
+        return Or{std::move(lhs), std::move(rhs)};
     } else if (contains("LSHIFT", s)) {
         auto lr = split(" LSHIFT ", s);
         return LShift{lr[0], static_cast<unsigned short>(std::stoi(lr[1]))};
