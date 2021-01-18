@@ -424,11 +424,12 @@ std::vector<std::string> split(const std::string &delim, const std::string &str)
     return cont;
 }
 
+static auto cache = std::unordered_map<std::string, unsigned short>{};
+
 unsigned short interpret(const std::unordered_map<std::string, instruction> &map, const instruction &instruction) {
-    static auto cache = std::unordered_map<std::string, unsigned short>{};
     auto instruction_string = boost::lexical_cast<std::string>(instruction);
     if (cache.contains(instruction_string)) {
-        return cache.at(instruction_string);
+        return cache[instruction_string];
     }
     auto value = std::visit(overload{
                                     [](const unsigned short &i) { return i; },
@@ -476,16 +477,19 @@ instruction parse_instruction(const std::string &s) {
 
 int main() {
     std::unordered_map<std::string, instruction> map;
-
     std::istringstream ss(INPUT);
     std::string line;
     while (std::getline(ss, line, '\n')) {
         auto sides = split(" -> ", line);
         auto name = sides[1];
         auto instruction = sides[0];
-        map.insert({name, parse_instruction(instruction)});
+        map[name] = parse_instruction(instruction);
     }
 
+    auto part1 = interpret(map, "a");
+    dbg(part1);
+    map["b"] = part1;
+    cache.clear();
     dbg(interpret(map, "a"));
     return 0;
 }
