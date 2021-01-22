@@ -106,5 +106,8 @@ allRoutesFrom Route {visited, total} =
       (ongoingRoutes, endedRoutes) = List.partition (\Route {visited, ..} -> length visited < length destsBySrc) nextRoutes
    in endedRoutes ++ (concat $ map allRoutesFrom ongoingRoutes)
 
-run :: IO ()
-run = putStrLn $ show $ minimum $ map total $ allRoutesFrom Route {visited = [], total = 0}
+part1 :: IO ()
+part1 = putStrLn $ show $ minimum $ map total $ allRoutesFrom Route {visited = [], total = 0}
+
+part2 :: IO ()
+part2 = putStrLn $ show $ maximum $ map total $ allRoutesFrom Route {visited = [], total = 0}

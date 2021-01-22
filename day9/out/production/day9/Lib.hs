@@ -104,11 +104,10 @@ allRoutesFrom Route {visited, total} =
         _ -> filter (\(dest, _) -> not $ dest `elem` visited) (destsBySrc ! last visited)
       nextRoutes = map (\(dest, cost) -> Route {visited = visited ++ [dest], total = total + cost}) nextDests
       (ongoingRoutes, endedRoutes) = List.partition (\Route {visited, ..} -> length visited < length destsBySrc) nextRoutes
-   in --      nextRoutes = map (\dest -> ) nextDests
-      endedRoutes ++ (concat $ map allRoutesFrom ongoingRoutes)
+   in endedRoutes ++ (concat $ map allRoutesFrom ongoingRoutes)
 
-observe :: Show a => String -> a -> a
-observe msg a = trace (msg ++ " " ++ show a) a
+part1 :: IO ()
+part1 = putStrLn $ show $ minimum $ map total $ allRoutesFrom Route {visited = [], total = 0}
 
-run :: IO ()
-run = putStrLn $ show $ minimum $ map total $ allRoutesFrom Route {visited = [], total = 0}
+part2 :: IO ()
+part2 = putStrLn $ show $ maximum $ map total $ allRoutesFrom Route {visited = [], total = 0}
