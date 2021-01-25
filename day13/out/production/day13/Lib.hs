@@ -1,4 +1,5 @@
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TupleSections #-}
 
 module Lib where
 
@@ -9,9 +10,7 @@ import Text.RawString.QQ
 
 type Person = String
 
-type SeatmateQuality = Map Person Int
-
-type Preferences = Map Person SeatmateQuality
+type Preferences = Map Person (Map Person Int)
 
 sample :: String
 sample =
@@ -90,7 +89,7 @@ Mallory would lose 89 happiness units by sitting next to George.|]
 preferences1 :: Preferences
 preferences1 = fromListWith (<>) $ map parseLine $ lines input
 
-parseLine :: String -> (Person, SeatmateQuality)
+parseLine :: String -> (Person, Map Person Int)
 parseLine s =
   let s' = init s -- remove "." from end of line
       ws = words s'
@@ -122,9 +121,8 @@ part1 = print $ maximum $ map sum $ map2 (happiness preferences1) $ map neighbor
 preferences2 :: Preferences
 preferences2 =
   fromList $
-    [("me", fromList $ map (\p -> (p, 0)) existingPeople)] ++ (map (second (insert "me" 0)) $ toList preferences1)
-  where
-    existingPeople = keys preferences1
+    ("me", fromList $ map (,0) $ keys preferences1) :
+    map (second (insert "me" 0)) (toList preferences1)
 
 part2 :: IO ()
 part2 = print $ maximum $ map sum $ map2 (happiness preferences2) $ map neighbors $ permutations $ keys preferences2
