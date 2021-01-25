@@ -2,8 +2,9 @@
 
 module Lib where
 
+import Data.Bifunctor (second)
 import Data.List (permutations)
-import Data.Map (Map, fromList, fromListWith, keys, (!))
+import Data.Map (Map, fromList, fromListWith, insert, keys, toList, (!))
 import Text.RawString.QQ
 
 type Person = String
@@ -86,8 +87,8 @@ Mallory would gain 31 happiness units by sitting next to Eric.
 Mallory would lose 73 happiness units by sitting next to Frank.
 Mallory would lose 89 happiness units by sitting next to George.|]
 
-preferences :: Preferences
-preferences = fromListWith (<>) $ map parseLine $ lines input
+preferences1 :: Preferences
+preferences1 = fromListWith (<>) $ map parseLine $ lines input
 
 parseLine :: String -> (Person, SeatmateQuality)
 parseLine s =
@@ -112,10 +113,23 @@ index xs n = xs !! (i `mod` length xs) where i = if n < 0 then length xs + n els
 map2 :: (a -> b) -> [[a]] -> [[b]]
 map2 = map . map
 
-happiness :: (Person, (Person, Person)) -> Int
-happiness (p, (pL, pR)) =
-  let prefs = preferences ! p
-   in (prefs ! pL) + (prefs ! pR)
+happiness :: Preferences -> (Person, (Person, Person)) -> Int
+happiness preferences (p, (pL, pR)) = (prefs ! pL) + (prefs ! pR) where prefs = preferences ! p
+
+part1 :: IO ()
+part1 = print $ maximum $ map sum $ map2 (happiness preferences1) $ map neighbors $ permutations $ keys preferences1
+
+preferences2 :: Preferences
+preferences2 =
+  fromList $
+    [("me", fromList $ map (\p -> (p, 0)) existingPeople)] ++ (map (second (insert "me" 0)) $ toList preferences1)
+  where
+    existingPeople = keys preferences1
+
+part2 :: IO ()
+part2 = print $ maximum $ map sum $ map2 (happiness preferences2) $ map neighbors $ permutations $ keys preferences2
 
 run :: IO ()
-run = print $ maximum $ map sum $ map2 happiness $ map neighbors $ permutations $ keys preferences
+run = part2
+
+--run = part2
