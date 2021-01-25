@@ -23,18 +23,20 @@ sumNums1 (Bool _) = 0
 sumNums1 (String _) = 0
 
 sumNums2 :: Value -> Int
-sumNums2 (Object o) = if "red" `elem` elems o then 0 else sum $ map sumNums2 $ elems o
+sumNums2 (Object o) = if "red" `elem` values then 0 else sum $ map sumNums2 values
+  where
+    values = elems o
 sumNums2 (Array vs) = sum $ map sumNums2 $ Vector.toList vs
 sumNums2 (Number n) = fromMaybe 0 $ toBoundedInteger n -- JSON numbers can be non-int
 sumNums2 Null = 0
 sumNums2 (Bool _) = 0
 sumNums2 (String _) = 0
 
-part1 :: IO ()
-part1 = print $ sumNums1 $ fromJust (decode input :: Maybe Value)
+part1 :: Int
+part1 = sumNums1 $ fromJust (decode input :: Maybe Value)
 
-part2 :: IO ()
-part2 = print $ sumNums2 $ fromJust (decode input :: Maybe Value)
+part2 :: Int
+part2 = sumNums2 $ fromJust (decode input :: Maybe Value)
 
 run :: IO ()
-run = part2
+run = print part2
