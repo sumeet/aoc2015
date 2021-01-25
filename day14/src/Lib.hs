@@ -36,21 +36,20 @@ newRacer Reindeer {speed, flyTime, restTime} =
 
 raceNTimes :: Int -> Racer -> Racer
 raceNTimes 0 racer = racer
-raceNTimes timeRemaining Racer {reindeer = Reindeer {speed, flyTime, restTime}, isResting, travelled}
+raceNTimes timeRemaining racer
   | isResting =
-    let next = nextRacer False travelled
-     in if timeRemaining <= restTime
-          then next
-          else raceNTimes (timeRemaining - restTime) next
+    if timeRemaining <= restTime
+      then racer {isResting = False, travelled}
+      else raceNTimes (timeRemaining - restTime) racer {isResting = False, travelled}
   | otherwise =
     if timeRemaining <= flyTime
-      then nextRacer False (travelled + (speed * timeRemaining))
-      else raceNTimes (timeRemaining - flyTime) $ nextRacer True (travelled + (speed * flyTime))
+      then racer {isResting = False, travelled = travelled + (speed * timeRemaining)}
+      else raceNTimes (timeRemaining - flyTime) $ racer {isResting = True, travelled = travelled + (speed * flyTime)}
   where
-    nextRacer isResting travelled = Racer {reindeer = Reindeer {speed, flyTime, restTime}, isResting, travelled}
+    Racer {reindeer = Reindeer {speed, flyTime, restTime}, isResting, travelled} = racer
 
 run :: IO ()
-run = print $ maximum $ map travelled $ map (raceNTimes 2503) $ map newRacer $ map parseLine (lines input)
+run = print $ maximum $ map (travelled . raceNTimes 2503 . newRacer . parseLine) (lines input)
 
 parseLine :: String -> Reindeer
 parseLine line =
