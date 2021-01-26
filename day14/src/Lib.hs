@@ -4,6 +4,7 @@
 
 module Lib where
 
+import Data.List (transpose)
 import Text.RawString.QQ
 
 data Reindeer = Reindeer
@@ -48,8 +49,22 @@ raceNTimes timeRemaining racer
   where
     Racer {reindeer = Reindeer {speed, flyTime, restTime}, isResting, travelled} = racer
 
+part1 :: IO ()
+part1 = print $ maximum $ map (travelled . raceNTimes 2503 . newRacer . parseLine) (lines input)
+
+scoreRace :: [Racer] -> [Int]
+scoreRace racers =
+  let maxDistance = maximum $ map travelled racers
+   in map (\Racer {travelled} -> if travelled == maxDistance then 1 else 0) racers
+
+part2 :: Int
+part2 =
+  let racers = map (newRacer . parseLine) $ lines input
+      raceAtEachSecond = map (\n -> map (raceNTimes n) racers) [1 .. 2503]
+   in maximum $ map sum $ transpose $ map scoreRace raceAtEachSecond
+
 run :: IO ()
-run = print $ maximum $ map (travelled . raceNTimes 2503 . newRacer . parseLine) (lines input)
+run = print part2
 
 parseLine :: String -> Reindeer
 parseLine line =
