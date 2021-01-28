@@ -4,7 +4,7 @@ module Lib where
 
 import Math.Geometry.Grid (neighbours, size)
 import Math.Geometry.Grid.Octagonal (RectOctGrid, rectOctGrid)
-import Math.Geometry.GridMap (mapWithKey, toList, (!))
+import Math.Geometry.GridMap (mapWithKey, (!))
 import qualified Math.Geometry.GridMap as GM
 import Math.Geometry.GridMap.Lazy (LGridMap, lazyGridMap)
 import Text.RawString.QQ
@@ -14,10 +14,13 @@ data Light = On | Off deriving (Show, Eq)
 type OurLights = LGridMap RectOctGrid Light
 
 part1 :: IO ()
-part1 = print $ countOn $ (!! 100) $ iterate next1 (parse (100, 100) input)
+part1 = print $ countOn $ (!! 100) $ iterate next (parse (100, 100) input)
+
+part2 :: IO ()
+part2 = print $ countOn $ stickOnCorners $ (!! 100) $ iterate (next . stickOnCorners) (parse (100, 100) input)
 
 run :: IO ()
-run = part1
+run = part2 --putStrLn $ printLights $ next $ stickOnCorners $ parse (6, 6) sample
 
 printLights :: OurLights -> String
 printLights lights =
@@ -45,8 +48,15 @@ parse (xdim, ydim) s =
     map (\c -> if c == '#' then On else Off) $
       filter (/= '\n') (s)
 
-next1 :: LGridMap RectOctGrid Light -> LGridMap RectOctGrid Light
-next1 gridmap = mapWithKey nextGen gridmap
+stickOnCorners :: OurLights -> OurLights
+stickOnCorners lights = foldl (\acc point -> GM.insert point On acc) lights corners
+  where
+    corners = [(0, 0), (0, ymax), (xmax, 0), (xmax, ymax)]
+    (xmax, ymax) = (xdim - 1, ydim - 1)
+    (xdim, ydim) = size lights
+
+next :: OurLights -> OurLights
+next gridmap = mapWithKey nextGen gridmap
   where
     nextGen point light = case light of
       On -> if numOnNeighbors `elem` [2, 3] then On else Off
