@@ -5,6 +5,7 @@ module Lib where
 
 import Data.List (intercalate, isInfixOf, sortOn)
 import Data.List.HT (search)
+import Data.Maybe (catMaybes, listToMaybe)
 import Debug.Trace (traceShowId)
 import Text.RawString.QQ
 
@@ -25,13 +26,26 @@ replaceOne from to s = a ++ to ++ drop (length from) b
     (a, b) = splitAt i s
     i = head $ search from s
 
-goBackwardsTowardsE :: [(String, String)] -> String -> Int -> Int
-goBackwardsTowardsE _ "e" numSubsSoFar = numSubsSoFar
-goBackwardsTowardsE allSubs curString numSubsSoFar = goBackwardsTowardsE allSubs nextString (numSubsSoFar + 1)
+goBackwardsTowardsEOld :: [(String, String)] -> String -> Int -> Int
+goBackwardsTowardsEOld _ "e" numSubsSoFar = numSubsSoFar
+goBackwardsTowardsEOld allSubs curString numSubsSoFar = goBackwardsTowardsEOld allSubs nextString (numSubsSoFar + 1)
   where
     nextString = replaceOne from to curString
     (to, from) = longestMatchingSub
     longestMatchingSub = head $ filter ((`isInfixOf` traceShowId curString) . snd) allSubs
+
+goBackwardsTowardsE :: [(String, String)] -> String -> Int -> Maybe Int
+goBackwardsTowardsE _ "e" numSubsSoFar = Just numSubsSoFar
+goBackwardsTowardsE allSubs curString numSubsSoFar =
+  listToMaybe $
+    catMaybes $
+      map
+        ( \(to, from) ->
+            let nextString = replaceOne from to curString in goBackwardsTowardsE allSubs nextString (numSubsSoFar + 1)
+        )
+        longestMatchingSubs
+  where
+    longestMatchingSubs = filter ((`isInfixOf` traceShowId curString) . snd) allSubs
 
 run :: IO ()
 run = do
