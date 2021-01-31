@@ -3,9 +3,9 @@
 
 module Lib where
 
-import Data.List (intercalate, isInfixOf, sortOn)
+import Data.List (isInfixOf, sortOn)
 import Data.List.HT (search)
-import Data.Maybe (catMaybes, listToMaybe)
+import Data.Maybe (listToMaybe, mapMaybe)
 import Debug.Trace (traceShowId)
 import Text.RawString.QQ
 
@@ -38,12 +38,12 @@ goBackwardsTowardsE :: [(String, String)] -> String -> Int -> Maybe Int
 goBackwardsTowardsE _ "e" numSubsSoFar = Just numSubsSoFar
 goBackwardsTowardsE allSubs curString numSubsSoFar =
   listToMaybe $
-    catMaybes $
-      map
-        ( \(to, from) ->
-            let nextString = replaceOne from to curString in goBackwardsTowardsE allSubs nextString (numSubsSoFar + 1)
-        )
-        longestMatchingSubs
+    mapMaybe
+      ( \(to, from) ->
+          let nextString = replaceOne from to curString
+           in goBackwardsTowardsE allSubs nextString (numSubsSoFar + 1)
+      )
+      longestMatchingSubs
   where
     longestMatchingSubs = filter ((`isInfixOf` curString) . snd) allSubs
 
