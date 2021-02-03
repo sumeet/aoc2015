@@ -24,6 +24,7 @@ dependencies:
 - containers
 - raw-strings-qq
 - utility-ht
+- text
 
 library:
   source-dirs: src

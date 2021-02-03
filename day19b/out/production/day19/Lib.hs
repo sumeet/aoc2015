@@ -1,51 +1,45 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TupleSections #-}
 
 module Lib where
 
-import Data.List (intercalate, isInfixOf, sortOn)
-import Data.List.HT (search)
-import Data.Maybe (catMaybes, listToMaybe, mapMaybe)
-import Debug.Trace (traceShowId)
+import Data.List (isInfixOf, sortOn)
+import Data.Maybe (listToMaybe, mapMaybe)
+import Data.Text (Text)
+import qualified Data.Text as T
+import Data.Text.Internal.Search (indices)
 import Text.RawString.QQ
 
-parseSubstitution :: String -> (String, String)
-parseSubstitution s = (head ws, last ws) where ws = words s
+parseSubstitution :: Text -> (Text, Text)
+parseSubstitution s = (head ws, last ws) where ws = T.words s
 
-parseInput :: String -> ([(String, String)], String)
+parseInput :: Text -> ([(Text, Text)], Text)
 parseInput s = (substitutions, startingMolecule)
   where
-    substitutions = sortOn (\(_, to) -> - (length to)) $ map parseSubstitution subLines
+    substitutions = sortOn (\(_, to) -> - (T.length to)) $ map parseSubstitution subLines
     subLines = (init . init) ls
     startingMolecule = last ls
-    ls = lines s
+    ls = T.lines s
 
-replaceOne :: String -> String -> String -> String
-replaceOne from to s = a ++ to ++ drop (length from) b
+replaceOne :: Text -> Text -> Text -> Text
+replaceOne from to s = a `T.append` to `T.append` T.drop (T.length from) b
   where
-    (a, b) = splitAt i s
-    i = head $ search from s
+    (a, b) = T.splitAt i s
+    i = head $ indices from s
 
-goBackwardsTowardsEOld :: [(String, String)] -> String -> Int -> Int
-goBackwardsTowardsEOld _ "e" numSubsSoFar = numSubsSoFar
-goBackwardsTowardsEOld allSubs curString numSubsSoFar = goBackwardsTowardsEOld allSubs nextString (numSubsSoFar + 1)
-  where
-    nextString = replaceOne from to curString
-    (to, from) = longestMatchingSub
-    longestMatchingSub = head $ filter ((`isInfixOf` traceShowId curString) . snd) allSubs
-
-goBackwardsTowardsE :: [(String, String)] -> String -> Int -> Maybe Int
+goBackwardsTowardsE :: [(Text, Text)] -> Text -> Int -> Maybe Int
 goBackwardsTowardsE _ "e" numSubsSoFar = Just numSubsSoFar
 goBackwardsTowardsE allSubs curString numSubsSoFar =
   listToMaybe $
     mapMaybe
       ( \(to, from) ->
-          let longestMatchingSubstString = replaceOne from to curString
-           in goBackwardsTowardsE allSubs longestMatchingSubstString (numSubsSoFar + 1)
+          let nextString = replaceOne from to curString
+           in goBackwardsTowardsE allSubs nextString (numSubsSoFar + 1)
       )
       longestMatchingSubs
   where
-    longestMatchingSubs = filter ((`isInfixOf` curString) . snd) allSubs
+    longestMatchingSubs = filter ((`T.isInfixOf` curString) . snd) allSubs
 
 run :: IO ()
 run = do
@@ -60,7 +54,7 @@ run = do
 --    subs = allSubs subMap
 --    (subMap, startingMolecule) = parseInput input
 
-sample :: String
+sample :: Text
 sample =
   [r|e => H
 e => O
@@ -70,7 +64,7 @@ O => HH
 
 HOHOHO|]
 
-input :: String
+input :: Text
 input =
   [r|Al => ThF
 Al => ThRnFAr
