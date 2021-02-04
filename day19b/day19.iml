@@ -24,5 +24,6 @@
     <orderEntry type="library" name="text-1.2.4.1" level="project" />
     <orderEntry type="library" name="binary-0.8.8.0" level="project" />
     <orderEntry type="library" name="bytestring-0.10.12.0" level="project" />
+    <orderEntry type="library" name="PSQueue-1.1.0.1" level="project" />
   </component>
 </module>

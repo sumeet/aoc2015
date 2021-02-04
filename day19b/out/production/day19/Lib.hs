@@ -1,11 +1,13 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TupleSections #-}
 
 module Lib where
 
-import Data.List (isInfixOf, sortOn)
+import Data.List (sortOn)
 import Data.Maybe (listToMaybe, mapMaybe)
+import Data.PSQueue (Binding ((:->)), PSQ, insert, minView, singleton)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Internal.Search (indices)
@@ -28,6 +30,37 @@ replaceOne from to s = a `T.append` to `T.append` T.drop (T.length from) b
     (a, b) = T.splitAt i s
     i = head $ indices from s
 
+data QItem = QItem
+  { curString :: Text,
+    numSubsSoFar :: Int
+  }
+  deriving (Eq, Ord)
+
+priority :: QItem -> (Int, Int)
+priority QItem {curString, numSubsSoFar} = (T.length curString, numSubsSoFar)
+
+initialQ :: Text -> PSQ QItem (Int, Int)
+initialQ s = let item = QItem {curString = s, numSubsSoFar = 0} in singleton item $ priority item
+
+handleQ :: [(Text, Text)] -> PSQ QItem (Int, Int) -> Maybe Int
+handleQ allSubs q =
+  minView q
+    >>= ( \(QItem {curString, numSubsSoFar} :-> _, rest) ->
+            if curString == "e"
+              then Just numSubsSoFar
+              else
+                let longestMatchingSubs = filter ((`T.isInfixOf` curString) . snd) allSubs
+                    nextQ =
+                      foldl
+                        ( \qAcc (to, from) ->
+                            let qItem = QItem {curString = replaceOne from to curString, numSubsSoFar = numSubsSoFar + 1}
+                             in insert qItem (priority qItem) qAcc
+                        )
+                        rest
+                        longestMatchingSubs
+                 in handleQ allSubs nextQ
+        )
+
 goBackwardsTowardsE :: [(Text, Text)] -> Text -> Int -> Maybe Int
 goBackwardsTowardsE _ "e" numSubsSoFar = Just numSubsSoFar
 goBackwardsTowardsE allSubs curString numSubsSoFar =
@@ -43,16 +76,15 @@ goBackwardsTowardsE allSubs curString numSubsSoFar =
 
 run :: IO ()
 run = do
-  print $ goBackwardsTowardsE allSubs startingMolecule 0
+  print $ handleQ allSubs $ initialQ startingMolecule
   where
     (allSubs, startingMolecule) = parseInput input
 
---run :: IO ()
---run = do
---  print $ length $ nub $ concatMap (\(from, to) -> replaceAllOnce from to startingMolecule) subs
---  where
---    subs = allSubs subMap
---    (subMap, startingMolecule) = parseInput input
+runOld :: IO ()
+runOld = do
+  print $ goBackwardsTowardsE allSubs startingMolecule 0
+  where
+    (allSubs, startingMolecule) = parseInput input
 
 sample :: Text
 sample =

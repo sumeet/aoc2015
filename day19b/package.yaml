@@ -25,6 +25,7 @@ dependencies:
 - raw-strings-qq
 - utility-ht
 - text
+- PSQueue
 
 library:
   source-dirs: src

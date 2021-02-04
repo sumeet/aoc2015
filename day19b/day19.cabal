@@ -31,7 +31,8 @@ library
   hs-source-dirs:
       src
   build-depends:
-      base >=4.7 && <5
+      PSQueue
+    , base >=4.7 && <5
     , containers
     , raw-strings-qq
     , text
@@ -46,7 +47,8 @@ executable day19-exe
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      PSQueue
+    , base >=4.7 && <5
     , containers
     , day19
     , raw-strings-qq
@@ -63,7 +65,8 @@ test-suite day19-test
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      PSQueue
+    , base >=4.7 && <5
     , containers
     , day19
     , raw-strings-qq
