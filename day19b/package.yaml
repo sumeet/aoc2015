@@ -27,6 +27,9 @@ dependencies:
 - text
 - PSQueue
 - astar
+- unordered-containers
+- random-shuffle
+- random
 
 library:
   source-dirs: src

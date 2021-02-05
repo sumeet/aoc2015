@@ -5,12 +5,19 @@
 
 module Lib where
 
+import Data.Graph.AStar (aStar)
+import qualified Data.HashSet as HS
 import Data.List (sortOn)
-import Data.PSQueue (Binding ((:->)), PSQ, empty, insert, minView)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Internal.Search (indices)
+--import System.Random.S
 import Text.RawString.QQ
+
+neighbors :: [(Text, Text)] -> Text -> HS.HashSet Text
+neighbors allSubs curString =
+  HS.fromList $
+    concatMap (\(to, from) -> replaceAllOnce from to curString) allSubs
 
 parseSubstitution :: Text -> (Text, Text)
 parseSubstitution s = (head ws, last ws) where ws = T.words s
@@ -23,12 +30,6 @@ parseInput s = (substitutions, startingMolecule)
     startingMolecule = last ls
     ls = T.lines s
 
---replaceOne :: Text -> Text -> Text -> Text
---replaceOne from to s = a `T.append` to `T.append` T.drop (T.length from) b
---  where
---    (a, b) = T.splitAt i s
---    i = head $ indices from s
-
 replaceAllOnce :: Text -> Text -> Text -> [Text]
 replaceAllOnce from to string =
   [a `T.append` to `T.append` T.drop subLen b | (a, b) <- map (`T.splitAt` string) matchIndices]
@@ -36,42 +37,11 @@ replaceAllOnce from to string =
     subLen = T.length from
     matchIndices = indices from string
 
-data QItem = QItem
-  { curString :: Text,
-    numSubsSoFar :: Int
-  }
-  deriving (Eq, Ord)
-
-add :: PSQ QItem (Int, Int) -> QItem -> PSQ QItem (Int, Int)
-add q qItem@QItem {curString, numSubsSoFar} = insert qItem (T.length curString, numSubsSoFar) q
-
-initialQ :: Text -> PSQ QItem (Int, Int)
-initialQ s = add empty QItem {curString = s, numSubsSoFar = 0}
-
-handleQ :: [(Text, Text)] -> PSQ QItem (Int, Int) -> Maybe Int
-handleQ allSubs q =
-  minView q
-    >>= ( \(QItem {curString, numSubsSoFar} :-> _, rest) ->
-            if curString == "e"
-              then Just numSubsSoFar
-              else
-                let longestMatchingSubs = filter ((`T.isInfixOf` curString) . snd) allSubs
-                    nextStrings = concatMap (\(to, from) -> replaceAllOnce from to curString) longestMatchingSubs
-                    nextQ = foldl (\qAcc nextString -> add qAcc QItem {curString = nextString, numSubsSoFar = numSubsSoFar + 1}) rest nextStrings
-                 in handleQ allSubs nextQ
-        )
-
 run :: IO ()
 run = do
-  print $ handleQ allSubs $ initialQ startingMolecule
+  print $ aStar (neighbors allSubs) (\_ _ -> 1) T.length ("e" ==) startingMolecule
   where
     (allSubs, startingMolecule) = parseInput input
-
---runOld :: IO ()
---runOld = do
---  print $ goBackwardsTowardsE allSubs startingMolecule 0
---  where
---    (allSubs, startingMolecule) = parseInput input
 
 sample :: Text
 sample =
