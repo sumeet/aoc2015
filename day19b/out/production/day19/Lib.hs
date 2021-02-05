@@ -5,19 +5,32 @@
 
 module Lib where
 
-import Data.Graph.AStar (aStar)
-import qualified Data.HashSet as HS
-import Data.List (sortOn)
+import Control.Arrow (first, second)
+import Data.List (find)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Internal.Search (indices)
---import System.Random.S
+import Debug.Trace (traceShowId)
+import System.Random (RandomGen, mkStdGen)
+import System.Random.Shuffle (shuffle')
 import Text.RawString.QQ
 
-neighbors :: [(Text, Text)] -> Text -> HS.HashSet Text
-neighbors allSubs curString =
-  HS.fromList $
-    concatMap (\(to, from) -> replaceAllOnce from to curString) allSubs
+converge :: Eq a => (a -> a) -> a -> a
+converge = until =<< ((==) =<<)
+
+replaceWithCount :: Text -> Text -> Text -> (Text, Int)
+replaceWithCount t from to = (T.replace from to t, length $ indices from t)
+
+tryShuffle :: [(Text, Text)] -> Text -> (Text, Int)
+tryShuffle allSubs curString = converge tryApplyAllSubs (curString, 0)
+  where
+    tryApplyAllSubs (s, subCount) =
+      foldl
+        ( \(s', subCount') (to, from) ->
+            second (subCount' +) $ replaceWithCount s' from to
+        )
+        (s, subCount)
+        allSubs
 
 parseSubstitution :: Text -> (Text, Text)
 parseSubstitution s = (head ws, last ws) where ws = T.words s
@@ -25,21 +38,17 @@ parseSubstitution s = (head ws, last ws) where ws = T.words s
 parseInput :: Text -> ([(Text, Text)], Text)
 parseInput s = (substitutions, startingMolecule)
   where
-    substitutions = sortOn (\(_, to) -> - (T.length to)) $ map parseSubstitution subLines
+    substitutions = map parseSubstitution subLines
     subLines = (init . init) ls
     startingMolecule = last ls
     ls = T.lines s
 
-replaceAllOnce :: Text -> Text -> Text -> [Text]
-replaceAllOnce from to string =
-  [a `T.append` to `T.append` T.drop subLen b | (a, b) <- map (`T.splitAt` string) matchIndices]
-  where
-    subLen = T.length from
-    matchIndices = indices from string
+shuf :: RandomGen gen => [a] -> gen -> [a]
+shuf xs = shuffle' xs $ length xs
 
 run :: IO ()
 run = do
-  print $ aStar (neighbors allSubs) (\_ _ -> 1) T.length ("e" ==) startingMolecule
+  print $ find (\(s, _) -> s == "e") $ map ((`tryShuffle` startingMolecule) . shuf allSubs . mkStdGen) [0 ..]
   where
     (allSubs, startingMolecule) = parseInput input
 
