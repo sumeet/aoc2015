@@ -5,19 +5,18 @@
 
 module Lib where
 
-import Control.Arrow (first, second)
+import Control.Arrow (second)
 import Data.List (find)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Internal.Search (indices)
-import Debug.Trace (traceShowId)
 import System.Random (RandomGen, mkStdGen)
 import System.Random.Shuffle (shuffle')
 import Text.RawString.QQ
 
 -- wow... https://stackoverflow.com/a/23924238/149987
 converge :: Eq a => (a -> a) -> a -> a
-converge = until =<< ((==) =<<)
+converge f x = let y = f x in if x == y then x else converge f y
 
 replaceWithCount :: Text -> Text -> Text -> (Text, Int)
 replaceWithCount t from to = (T.replace from to t, length $ indices from t)
@@ -33,6 +32,15 @@ tryShuffle allSubs curString = converge tryApplyAllSubs (curString, 0)
         (s, subCount)
         allSubs
 
+shuf :: RandomGen gen => [a] -> gen -> [a]
+shuf xs = shuffle' xs $ length xs
+
+run :: IO ()
+run = do
+  print $ find (("e" ==) . fst) $ map ((`tryShuffle` startingMolecule) . shuf allSubs . mkStdGen) [0 ..]
+  where
+    (allSubs, startingMolecule) = parseInput input
+
 parseSubstitution :: Text -> (Text, Text)
 parseSubstitution s = (head ws, last ws) where ws = T.words s
 
@@ -43,15 +51,6 @@ parseInput s = (substitutions, startingMolecule)
     subLines = (init . init) ls
     startingMolecule = last ls
     ls = T.lines s
-
-shuf :: RandomGen gen => [a] -> gen -> [a]
-shuf xs = shuffle' xs $ length xs
-
-run :: IO ()
-run = do
-  print $ find (("e" ==) . fst) $ map ((`tryShuffle` startingMolecule) . shuf allSubs . mkStdGen) [0 ..]
-  where
-    (allSubs, startingMolecule) = parseInput input
 
 sample :: Text
 sample =

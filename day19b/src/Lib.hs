@@ -16,7 +16,7 @@ import Text.RawString.QQ
 
 -- wow... https://stackoverflow.com/a/23924238/149987
 converge :: Eq a => (a -> a) -> a -> a
-converge = until =<< ((==) =<<)
+converge f x = let y = f x in if x == y then x else converge f y
 
 replaceWithCount :: Text -> Text -> Text -> (Text, Int)
 replaceWithCount t from to = (T.replace from to t, length $ indices from t)
