@@ -6,8 +6,7 @@
 module Lib where
 
 import Data.List (sortOn)
-import Data.Maybe (listToMaybe, mapMaybe)
-import Data.PSQueue (Binding ((:->)), PSQ, insert, minView, singleton)
+import Data.PSQueue (Binding ((:->)), PSQ, empty, insert, minView)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Internal.Search (indices)
@@ -24,11 +23,18 @@ parseInput s = (substitutions, startingMolecule)
     startingMolecule = last ls
     ls = T.lines s
 
-replaceOne :: Text -> Text -> Text -> Text
-replaceOne from to s = a `T.append` to `T.append` T.drop (T.length from) b
+--replaceOne :: Text -> Text -> Text -> Text
+--replaceOne from to s = a `T.append` to `T.append` T.drop (T.length from) b
+--  where
+--    (a, b) = T.splitAt i s
+--    i = head $ indices from s
+
+replaceAllOnce :: Text -> Text -> Text -> [Text]
+replaceAllOnce from to string =
+  [a `T.append` to `T.append` T.drop subLen b | (a, b) <- map (`T.splitAt` string) matchIndices]
   where
-    (a, b) = T.splitAt i s
-    i = head $ indices from s
+    subLen = T.length from
+    matchIndices = indices from string
 
 data QItem = QItem
   { curString :: Text,
@@ -36,11 +42,11 @@ data QItem = QItem
   }
   deriving (Eq, Ord)
 
-priority :: QItem -> (Int, Int)
-priority QItem {curString, numSubsSoFar} = (T.length curString, numSubsSoFar)
+add :: PSQ QItem (Int, Int) -> QItem -> PSQ QItem (Int, Int)
+add q qItem@QItem {curString, numSubsSoFar} = insert qItem (T.length curString, numSubsSoFar) q
 
 initialQ :: Text -> PSQ QItem (Int, Int)
-initialQ s = let item = QItem {curString = s, numSubsSoFar = 0} in singleton item $ priority item
+initialQ s = add empty QItem {curString = s, numSubsSoFar = 0}
 
 handleQ :: [(Text, Text)] -> PSQ QItem (Int, Int) -> Maybe Int
 handleQ allSubs q =
@@ -50,29 +56,10 @@ handleQ allSubs q =
               then Just numSubsSoFar
               else
                 let longestMatchingSubs = filter ((`T.isInfixOf` curString) . snd) allSubs
-                    nextQ =
-                      foldl
-                        ( \qAcc (to, from) ->
-                            let qItem = QItem {curString = replaceOne from to curString, numSubsSoFar = numSubsSoFar + 1}
-                             in insert qItem (priority qItem) qAcc
-                        )
-                        rest
-                        longestMatchingSubs
+                    nextStrings = concatMap (\(to, from) -> replaceAllOnce from to curString) longestMatchingSubs
+                    nextQ = foldl (\qAcc nextString -> add qAcc QItem {curString = nextString, numSubsSoFar = numSubsSoFar + 1}) rest nextStrings
                  in handleQ allSubs nextQ
         )
-
-goBackwardsTowardsE :: [(Text, Text)] -> Text -> Int -> Maybe Int
-goBackwardsTowardsE _ "e" numSubsSoFar = Just numSubsSoFar
-goBackwardsTowardsE allSubs curString numSubsSoFar =
-  listToMaybe $
-    mapMaybe
-      ( \(to, from) ->
-          let nextString = replaceOne from to curString
-           in goBackwardsTowardsE allSubs nextString (numSubsSoFar + 1)
-      )
-      longestMatchingSubs
-  where
-    longestMatchingSubs = filter ((`T.isInfixOf` curString) . snd) allSubs
 
 run :: IO ()
 run = do
@@ -80,11 +67,11 @@ run = do
   where
     (allSubs, startingMolecule) = parseInput input
 
-runOld :: IO ()
-runOld = do
-  print $ goBackwardsTowardsE allSubs startingMolecule 0
-  where
-    (allSubs, startingMolecule) = parseInput input
+--runOld :: IO ()
+--runOld = do
+--  print $ goBackwardsTowardsE allSubs startingMolecule 0
+--  where
+--    (allSubs, startingMolecule) = parseInput input
 
 sample :: Text
 sample =

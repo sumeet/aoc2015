@@ -26,6 +26,7 @@ dependencies:
 - utility-ht
 - text
 - PSQueue
+- astar
 
 library:
   source-dirs: src
