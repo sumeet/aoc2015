@@ -15,6 +15,7 @@ import System.Random (RandomGen, mkStdGen)
 import System.Random.Shuffle (shuffle')
 import Text.RawString.QQ
 
+-- wow... https://stackoverflow.com/a/23924238/149987
 converge :: Eq a => (a -> a) -> a -> a
 converge = until =<< ((==) =<<)
 
@@ -48,7 +49,7 @@ shuf xs = shuffle' xs $ length xs
 
 run :: IO ()
 run = do
-  print $ find (\(s, _) -> s == "e") $ map ((`tryShuffle` startingMolecule) . shuf allSubs . mkStdGen) [0 ..]
+  print $ find (("e" ==) . fst) $ map ((`tryShuffle` startingMolecule) . shuf allSubs . mkStdGen) [0 ..]
   where
     (allSubs, startingMolecule) = parseInput input
 
