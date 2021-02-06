@@ -4,13 +4,13 @@ import Control.Parallel.Strategies (parBuffer, rdeepseq, runEval)
 import Data.List (find)
 
 factors :: Int -> [Int]
-factors n = [x | x <- [1 .. n `div` 2] ++ [n], n `mod` x == 0]
+factors n = [x | x <- [1 .. n `div` 2], n `mod` x == 0] ++ [n]
 
 numPresentsFor :: Int -> Int
 numPresentsFor = (* 10) . sum . factors
 
 factors2 :: Int -> [Int]
-factors2 n = filter (\f -> n <= f * 50) $ factors n
+factors2 n = dropWhile (\f -> n > f * 50) $ factors n
 
 numPresentsFor2 :: Int -> Int
 numPresentsFor2 = (* 11) . sum . factors2
