@@ -3,12 +3,23 @@
 module Lib where
 
 import Combinatorics (variate)
+import Data.List (intercalate, sortOn)
+import qualified Data.Ord
 
 run :: IO ()
-run = do
+run = part2
+
+part1 :: IO ()
+part1 = do
   print $ minimum myStatss
   where
     myStatss = [cost | (me, cost) <- map myStats combinationsOfGearForMe, doIWin me bossStats]
+
+part2 :: IO ()
+part2 = do
+  print $ maximum myStatss
+  where
+    myStatss = [cost | (me, cost) <- map myStats combinationsOfGearForMe, not $ doIWin me bossStats]
 
 combinationsOfGearForMe :: [[Item]]
 combinationsOfGearForMe =
@@ -18,13 +29,6 @@ combinationsOfGearForMe =
       weaponsSet <- concatMap (`variate` weapons) [1]
   ]
 
--- constraints:
--- weapon (5 total): one and only one
--- armor (5 total): zero or one
--- rings (6 total): 0, 1, 2
-
--- (no rings :: 1), (1 ring :: 6), (2 rings :: 15)
-
 doIWin :: Fighter -> Fighter -> Bool
 doIWin me boss = numHitsForBoss <= numHitsForMe
   where
@@ -32,12 +36,9 @@ doIWin me boss = numHitsForBoss <= numHitsForMe
     numHitsForMe = numHitsToKO me boss
 
 numHitsToKO :: Fighter -> Fighter -> Int -- Defender -> Attacker -> Num Hits
-numHitsToKO Fighter {hp, shield} Fighter {attack} =
-  if attackAfterShield == 0
-    then 9999999
-    else hp `ceilDiv` attackAfterShield
+numHitsToKO Fighter {hp, shield} Fighter {attack} = hp `ceilDiv` attackAfterShield
   where
-    attackAfterShield = attack - shield
+    attackAfterShield = max 1 $ attack - shield
 
 data Item = Item
   { cost :: Int,
@@ -102,3 +103,6 @@ ceilDiv l r = divided + if hasRemainder then 1 else 0
   where
     hasRemainder = remainder /= 0
     (divided, remainder) = l `divMod` r
+
+showMany :: Show a => [a] -> String
+showMany xs = intercalate "\n\n" $ map show xs

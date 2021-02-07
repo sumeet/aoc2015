@@ -5,10 +5,19 @@ module Lib where
 import Combinatorics (variate)
 
 run :: IO ()
-run = do
+run = part2
+
+part1 :: IO ()
+part1 = do
   print $ minimum myStatss
   where
     myStatss = [cost | (me, cost) <- map myStats combinationsOfGearForMe, doIWin me bossStats]
+
+part2 :: IO ()
+part2 = do
+  print $ maximum myStatss
+  where
+    myStatss = [cost | (me, cost) <- map myStats combinationsOfGearForMe, not $ doIWin me bossStats]
 
 combinationsOfGearForMe :: [[Item]]
 combinationsOfGearForMe =
@@ -25,12 +34,9 @@ doIWin me boss = numHitsForBoss <= numHitsForMe
     numHitsForMe = numHitsToKO me boss
 
 numHitsToKO :: Fighter -> Fighter -> Int -- Defender -> Attacker -> Num Hits
-numHitsToKO Fighter {hp, shield} Fighter {attack} =
-  if attackAfterShield == 0
-    then 9999999
-    else hp `ceilDiv` attackAfterShield
+numHitsToKO Fighter {hp, shield} Fighter {attack} = hp `ceilDiv` attackAfterShield
   where
-    attackAfterShield = attack - shield
+    attackAfterShield = max 1 $ attack - shield
 
 data Item = Item
   { cost :: Int,
