@@ -8,7 +8,36 @@
         (our-armor . 0)
         (boss-hp . 58)
         (boss-dmg . 9)
+        (turn . 'player)
         (current-spells . #hash())))
+
+(define (pop-and-apply-effects state)
+  (let* ([current-spells (hash-ref state 'current-spells)]
+         [state (foldl
+                 (lambda (spell-name state)
+                   (apply-state-changes
+                    (first (hash-ref current-spells spell-name))
+                    state))
+                 state
+                 (hash-keys current-spells))]
+         [current-spells (hash-ref state 'current-spells)]
+         [current-spells
+          (make-hash (filter (lambda (l) (not (not l)))
+                             (hash-map
+                              current-spells
+                              (lambda (spell-name actions)
+                                (if (= (length actions) 1) #f (cons spell-name (rest actions)))))))])
+    (hash-set state 'current-spells current-spells)))
+
+(define (next-states state)
+  (let* ([castable-spell-names (castable-spell-names state)])
+    ;; TODO: this just applied the first state, still need to pop and then
+    ;; do the rest of the code
+    123
+    ))
+
+(define (us-ko? state) ((hash-ref state 'our-hp) . <= . 0))
+(define (boss-ko? state) ((hash-ref state 'boss-hp) . <= . 0))
 
 (define (cost spell-name)
   (let* ([first-turn (first (hash-ref spells spell-name))]
@@ -37,17 +66,25 @@
                      {(our-mp +101)}
                      {(our-mp +101)}])])
 
-(define (apply-state-change state change)
+(define (apply-state-change change state)
   (hash-update state
                (car change)
                (lambda (x) (+ (second change) x))))
 
+(define (apply-state-changes changes state)
+  (foldl apply-state-change state changes))
 
 (define (cast-spell spell-name state)
   (let* ([spell-turns (hash-ref spells spell-name)]
          [to-apply-now (first spell-turns)]
-         [to-apply-laters (rest spell-turns)])
-    'hello))
+         [to-apply-laters (rest spell-turns)]
+         [state (apply-state-changes to-apply-now state)])
+    (if
+     (empty? to-apply-laters)
+     state
+     (hash-update state 'current-spells
+                  (lambda (current-spells)
+                    (hash-set current-spells spell-name to-apply-laters))))))
 
 (define (remaining-mp state) (hash-ref state 'our-mp))
 
@@ -55,8 +92,9 @@
   (let ([inactive-spell-names
          (set-subtract (hash-keys spells)
                        (hash-keys (hash-ref state 'current-spells)))])
-    (filter (lambda (spell-name) ((cost spell-name) . <= . (remaining-mp state)))
-            inactive-spell-names)))
+    (filter
+     (lambda (spell-name) ((cost spell-name) . <= . (remaining-mp state)))
+     inactive-spell-names)))
 
 
 
