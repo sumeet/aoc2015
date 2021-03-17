@@ -8,7 +8,6 @@
         (our-armor . 0)
         (boss-hp . 58)
         (boss-dmg . 9)
-        (turn . 'player)
         (current-spells . #hash())))
 
 (define (pop-and-apply-effects state)
@@ -22,7 +21,7 @@
                  (hash-keys current-spells))]
          [current-spells (hash-ref state 'current-spells)]
          [current-spells
-          (make-hash (filter (lambda (l) (not (not l)))
+          (make-immutable-hash (filter (lambda (l) (not (not l)))
                              (hash-map
                               current-spells
                               (lambda (spell-name actions)
@@ -30,12 +29,21 @@
     (hash-set state 'current-spells current-spells)))
 
 (define (next-states state)
-  (let* ([castable-spell-names (castable-spell-names state)])
-    ;; TODO: this just applied the first state, still need to pop and then
-    ;; do the rest of the code
-    123
-    ))
-
+  (let* ([spell-names (castable-spell-names state)]
+         ;; apply effects before player turn
+         [state (pop-and-apply-effects state)])
+    (if
+     (either-ko? state)
+     ;; if either is KOd after applying effects, short circuit
+     '(state)
+     ;; player 1 turn
+     (let* ([player-turns (map (lambda (spell-name) (cast-spell state spell-name)) spell-names)]
+            [ko-turns (filter either-ko? player-turns)])
+       ;; if either side is KOd after our spell cast, then short circuit
+       (if (cons? ko-turns) ko-turns 123)))))
+  
+  
+(define (either-ko? state) (or (us-ko? state) (boss-ko? state)))
 (define (us-ko? state) ((hash-ref state 'our-hp) . <= . 0))
 (define (boss-ko? state) ((hash-ref state 'boss-hp) . <= . 0))
 
@@ -74,7 +82,12 @@
 (define (apply-state-changes changes state)
   (foldl apply-state-change state changes))
 
-(define (cast-spell spell-name state)
+(define (boss-turn state)
+  (hash-update state 'our-hp
+               (lambda (cur-hp)
+                 ((cur-hp . - . (hash-ref state 'boss-dmg)) . + . (hash-ref state 'our-armor)))))
+
+(define (cast-spell state spell-name)
   (let* ([spell-turns (hash-ref spells spell-name)]
          [to-apply-now (first spell-turns)]
          [to-apply-laters (rest spell-turns)]
