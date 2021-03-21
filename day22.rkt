@@ -2,12 +2,22 @@
 
 (require racket/set)
 
-(define initial-state
+(define input-state
   #hash((our-hp . 50)
         (our-mp . 500)
         (our-armor . 0)
         (boss-hp . 58)
         (boss-dmg . 9)
+        (total-mp-spent . 0)
+        (current-spells . #hash())))
+
+(define sample-state
+  #hash((our-hp . 10)
+        (our-mp . 250)
+        (our-armor . 0)
+        (boss-hp . 13)
+        (boss-dmg . 8)
+        (total-mp-spent . 0)
         (current-spells . #hash())))
 
 (define (pop-and-apply-effects state)
@@ -32,17 +42,48 @@
   (let* ([spell-names (castable-spell-names state)]
          ;; apply effects before player turn
          [state (pop-and-apply-effects state)])
-    (if
-     (either-ko? state)
+    (if (either-ko? state)
      ;; if either is KOd after applying effects, short circuit
-     '(state)
+     (list state)
      ;; player 1 turn
-     (let* ([player-turns (map (lambda (spell-name) (cast-spell state spell-name)) spell-names)]
-            [ko-turns (filter either-ko? player-turns)])
-       ;; if either side is KOd after our spell cast, then short circuit
-       (if (cons? ko-turns) ko-turns 123)))))
-  
-  
+     (let*-values ([(player-turns) (map (lambda (spell-name) (cast-spell state spell-name)) spell-names)]
+                   [(ko-turns non-ko-turns) (partition either-ko? player-turns)]
+                   [(after-p1-turn) (append ko-turns (map pop-and-apply-effects non-ko-turns))]
+                   ;; now do the boss turn
+                   [(after-boss-attack) (map (compose pop-and-apply-effects boss-turn) after-p1-turn)])
+       after-boss-attack))))
+
+;; (define (apply-player-spell-and-boss-attack state spell-name)
+;;   (let ([state (pop-and-apply-effects state)])
+;;     (if (either-ko? state)
+;;         state
+;;         (let ([state (cast-spell state spell-name)])
+;;           (if (either-ko? state)
+;;               state
+;;               (let ([state (boss-turn state)])
+;;                 (if (either-ko? state) state (pop-and-apply-effects state))))))))
+(define (apply-player-spell-and-boss-attack state spell-name)
+  (if-not-ko-then
+   (pop-and-apply-effects state)
+   (cast-spell state)
+   ))
+
+(define (if-not-ko-then state func) (if (either-ko? state) state (func state)))
+
+(define (all-final-states-with-boss-ko state)
+  (let*-values ([(states) (next-states state)]
+                ;; filter out states where we die
+                [(states) (filter (compose not us-ko?) states)]
+                [(boss-ko-states not-yet-ko-states) (partition boss-ko? states)])
+    (append boss-ko-states ((compose flatten map) all-final-states-with-boss-ko not-yet-ko-states))))
+
+(define (least-mp-expenditures starting-state)
+  (let ([all-mps (map
+                  (lambda (state) (hash-ref state 'total-mp-spent))
+                  (all-final-states-with-boss-ko starting-state))])
+    (sort (all-mps starting-state) <)))
+
+
 (define (either-ko? state) (or (us-ko? state) (boss-ko? state)))
 (define (us-ko? state) ((hash-ref state 'our-hp) . <= . 0))
 (define (boss-ko? state) ((hash-ref state 'boss-hp) . <= . 0))
@@ -55,19 +96,19 @@
     (* -1 (second mp-expenditure-action))))
 
 (define spells
-  #hash[(magic-missile . [{(our-mp -53) (boss-hp -4)}])
-        (drain . [{(our-mp -73) (boss-hp -2) (our-hp +2)}])
-        (shield . [{(our-mp -113) (our-armor +7)} ; should last 6 turns
+  #hash[(magic-missile . [{(our-mp -53) (total-mp-spent +53) (boss-hp -4)}])
+        (drain . [{(our-mp -73) (total-mp-spent +73) (boss-hp -2) (our-hp +2)}])
+        (shield . [{(our-mp -113) (total-mp-spent +113) (our-armor +7)} ; should last 6 turns
                    {} {} {} {} {} {}
                    {(our-armor -7)}])
-        (poison . [{(our-mp -173)} ; should last 6 turns
+        (poison . [{(our-mp -173) (total-mp-spent +173)} ; should last 6 turns
                    {(boss-hp -3)}
                    {(boss-hp -3)}
                    {(boss-hp -3)}
                    {(boss-hp -3)}
                    {(boss-hp -3)}
                    {(boss-hp -3)}])
-        (recharge . [{(our-mp -229)} ; should last 5 turns
+        (recharge . [{(our-mp -229) (total-mp-spent +229)} ; should last 5 turns
                      {(our-mp +101)}
                      {(our-mp +101)}
                      {(our-mp +101)}
