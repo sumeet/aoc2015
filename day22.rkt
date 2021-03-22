@@ -11,11 +11,20 @@
         (total-mp-spent . 0)
         (current-spells . #hash())))
 
-(define sample-state
+(define sample-1-state
   #hash((our-hp . 10)
         (our-mp . 250)
         (our-armor . 0)
         (boss-hp . 13)
+        (boss-dmg . 8)
+        (total-mp-spent . 0)
+        (current-spells . #hash())))
+
+(define sample-2-state
+  #hash((our-hp . 10)
+        (our-mp . 250)
+        (our-armor . 0)
+        (boss-hp . 14)
         (boss-dmg . 8)
         (total-mp-spent . 0)
         (current-spells . #hash())))
@@ -46,29 +55,23 @@
      ;; if either is KOd after applying effects, short circuit
      (list state)
      ;; player 1 turn
-     (let*-values ([(player-turns) (map (lambda (spell-name) (cast-spell state spell-name)) spell-names)]
+     (let*-values ([(player-turns) (map (lambda (spell-name) (cast-spell spell-name state)) spell-names)]
                    [(ko-turns non-ko-turns) (partition either-ko? player-turns)]
                    [(after-p1-turn) (append ko-turns (map pop-and-apply-effects non-ko-turns))]
                    ;; now do the boss turn
                    [(after-boss-attack) (map (compose pop-and-apply-effects boss-turn) after-p1-turn)])
        after-boss-attack))))
 
-;; (define (apply-player-spell-and-boss-attack state spell-name)
-;;   (let ([state (pop-and-apply-effects state)])
-;;     (if (either-ko? state)
-;;         state
-;;         (let ([state (cast-spell state spell-name)])
-;;           (if (either-ko? state)
-;;               state
-;;               (let ([state (boss-turn state)])
-;;                 (if (either-ko? state) state (pop-and-apply-effects state))))))))
-(define (apply-player-spell-and-boss-attack state spell-name)
-  (if-not-ko-then
-   (pop-and-apply-effects state)
-   (cast-spell state)
-   ))
+;; i think the above version had a bug in it, so then i wrote the bottom version
+(define (full-turn spell-name state)
+  ((compose
+    (curry if-not-ko-then boss-turn)
+    (curry if-not-ko-then pop-and-apply-effects)
+    (curry if-not-ko-then (curry cast-spell spell-name))
+    (curry if-not-ko-then pop-and-apply-effects))
+   state))
 
-(define (if-not-ko-then state func) (if (either-ko? state) state (func state)))
+(define (if-not-ko-then func state) (if (either-ko? state) state (func state)))
 
 (define (all-final-states-with-boss-ko state)
   (let*-values ([(states) (next-states state)]
@@ -81,7 +84,7 @@
   (let ([all-mps (map
                   (lambda (state) (hash-ref state 'total-mp-spent))
                   (all-final-states-with-boss-ko starting-state))])
-    (sort (all-mps starting-state) <)))
+    (sort all-mps <)))
 
 
 (define (either-ko? state) (or (us-ko? state) (boss-ko? state)))
@@ -128,7 +131,7 @@
                (lambda (cur-hp)
                  ((cur-hp . - . (hash-ref state 'boss-dmg)) . + . (hash-ref state 'our-armor)))))
 
-(define (cast-spell state spell-name)
+(define (cast-spell spell-name state)
   (let* ([spell-turns (hash-ref spells spell-name)]
          [to-apply-now (first spell-turns)]
          [to-apply-laters (rest spell-turns)]
@@ -184,3 +187,14 @@
 ;; ;;           (game-state-boss-dmg state)))
 
 ;; (define initial-state (game-state 50 500 0 58 9))
+
+;; before, this took me like 30 minutes to write
+;; dead code preserved, just to have this as reference to look at later
+(define (apply-player-spell-and-boss-attack1 state spell-name)
+  (let ([state (pop-and-apply-effects state)])
+    (if (either-ko? state)
+        state
+        (let ([state (cast-spell spell-name state)])
+          (if (either-ko? state)
+              state
+              (boss-turn state))))))
