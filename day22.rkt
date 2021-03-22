@@ -48,19 +48,7 @@
     (hash-set state 'current-spells current-spells)))
 
 (define (next-states state)
-  (let* ([spell-names (castable-spell-names state)]
-         ;; apply effects before player turn
-         [state (pop-and-apply-effects state)])
-    (if (either-ko? state)
-     ;; if either is KOd after applying effects, short circuit
-     (list state)
-     ;; player 1 turn
-     (let*-values ([(player-turns) (map (lambda (spell-name) (cast-spell spell-name state)) spell-names)]
-                   [(ko-turns non-ko-turns) (partition either-ko? player-turns)]
-                   [(after-p1-turn) (append ko-turns (map pop-and-apply-effects non-ko-turns))]
-                   ;; now do the boss turn
-                   [(after-boss-attack) (map (compose pop-and-apply-effects boss-turn) after-p1-turn)])
-       after-boss-attack))))
+  (map (lambda (spell-name) (full-turn spell-name state)) (castable-spell-names state)))
 
 ;; i think the above version had a bug in it, so then i wrote the bottom version
 (define (full-turn spell-name state)
