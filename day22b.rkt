@@ -1,0 +1,198 @@
+#lang racket
+
+(require racket/set)
+
+(define input-state
+  #hash((our-hp . 50)
+        (our-mp . 500)
+        (our-armor . 0)
+        (boss-hp . 58)
+        (boss-dmg . 9)
+        (total-mp-spent . 0)
+        (current-spells . #hash())))
+
+(define sample-1-state
+  #hash((our-hp . 10)
+        (our-mp . 250)
+        (our-armor . 0)
+        (boss-hp . 13)
+        (boss-dmg . 8)
+        (total-mp-spent . 0)
+        (current-spells . #hash())))
+
+(define sample-2-state
+  #hash((our-hp . 10)
+        (our-mp . 250)
+        (our-armor . 0)
+        (boss-hp . 14)
+        (boss-dmg . 8)
+        (total-mp-spent . 0)
+        (current-spells . #hash())))
+
+(define (pop-and-apply-effects state)
+  (let* ([current-spells (hash-ref state 'current-spells)]
+         [state (foldl
+                 (lambda (spell-name state)
+                   (apply-state-changes
+                    (first (hash-ref current-spells spell-name))
+                    state))
+                 state
+                 (hash-keys current-spells))]
+         [current-spells (hash-ref state 'current-spells)]
+         [current-spells
+          (make-immutable-hash (filter (lambda (l) (not (not l)))
+                             (hash-map
+                              current-spells
+                              (lambda (spell-name actions)
+                                (if (= (length actions) 1) #f (cons spell-name (rest actions)))))))])
+    (hash-set state 'current-spells current-spells)))
+
+(define (hard-mode state)
+  ;; ROFL, wtf @ 0.5 working... this should have been 1... ROFL ROFL ROFL
+  (hash-update state 'our-hp (lambda (cur-hp) (cur-hp . - . 0.5))))
+
+(define (next-states state)
+  (let ([state ((compose (curry if-not-ko-then pop-and-apply-effects) hard-mode) state)])
+    (map (lambda (spell-name) (rest-turn spell-name state)) (castable-spell-names state))))
+
+;; the part of the turn AFTER applying effects, reason being we need to apply
+;; effects before seeing which spells are castable:
+;; "effects can be started on the same turn they end"
+(define (rest-turn spell-name state)
+  ((compose
+    (curry if-not-ko-then boss-turn)
+    (curry if-not-ko-then pop-and-apply-effects)
+    (curry if-not-ko-then (curry cast-spell spell-name)))
+   state))
+
+(define (if-not-ko-then func state) (if (either-ko? state) state (func state)))
+
+(define (all-final-states-with-boss-ko state)
+  (let*-values ([(states) (next-states state)]
+                ;; filter out states where we die
+                [(states) (filter (compose not us-ko?) states)]
+                [(boss-ko-states not-yet-ko-states) (partition boss-ko? states)])
+    (append boss-ko-states
+            ((compose flatten map)
+             all-final-states-with-boss-ko
+             not-yet-ko-states))))
+
+(define (least-mp-expenditure starting-state)
+  (let ([all-mps (map
+                  (lambda (state) (hash-ref state 'total-mp-spent))
+                  (all-final-states-with-boss-ko starting-state))])
+    (foldl min +inf.f all-mps)))
+
+
+(define (either-ko? state) (or (us-ko? state) (boss-ko? state)))
+(define (us-ko? state) ((hash-ref state 'our-hp) . <= . 0))
+(define (boss-ko? state) ((hash-ref state 'boss-hp) . <= . 0))
+
+(define (cost spell-name)
+  (let* ([first-turn (first (hash-ref spells spell-name))]
+         [mp-expenditure-action (findf
+                                 (lambda (effect) (equal? (car effect) 'our-mp))
+                                 first-turn)])
+    (* -1 (second mp-expenditure-action))))
+
+(define spells
+  #hash[(magic-missile . [{(our-mp -53) (total-mp-spent +53) (boss-hp -4)}])
+        (drain . [{(our-mp -73) (total-mp-spent +73) (boss-hp -2) (our-hp +2)}])
+        ; should last 6 turns
+        (shield . [{(our-mp -113) (total-mp-spent +113) (our-armor +7)} 
+                   {} {} {} {} {} {} {(our-armor -7)}])
+        (poison . [{(our-mp -173) (total-mp-spent +173)} ; should last 6 turns
+                   {(boss-hp -3)}
+                   {(boss-hp -3)}
+                   {(boss-hp -3)}
+                   {(boss-hp -3)}
+                   {(boss-hp -3)}
+                   {(boss-hp -3)}])
+        (recharge . [{(our-mp -229) (total-mp-spent +229)} ; should last 5 turns
+                     {(our-mp +101)}
+                     {(our-mp +101)}
+                     {(our-mp +101)}
+                     {(our-mp +101)}
+                     {(our-mp +101)}])])
+
+(define (apply-state-change change state)
+  (hash-update state
+               (car change)
+               (lambda (x) (+ (second change) x))))
+
+(define (apply-state-changes changes state)
+  (foldl apply-state-change state changes))
+
+(define (boss-turn state)
+  ;; damage from boss is at least 1
+  (let ([dmg
+         (max 1 ((hash-ref state 'boss-dmg) . - . (hash-ref state 'our-armor)))])
+    (hash-update state 'our-hp (lambda (cur-hp) (cur-hp . - . dmg)))))
+
+(define (cast-spell spell-name state)
+  (let* ([spell-turns (hash-ref spells spell-name)]
+         [to-apply-now (first spell-turns)]
+         [to-apply-laters (rest spell-turns)]
+         [state (apply-state-changes to-apply-now state)])
+    (if
+     (empty? to-apply-laters)
+     state
+     (hash-update state 'current-spells
+                  (lambda (current-spells)
+                    (hash-set current-spells spell-name to-apply-laters))))))
+
+(define (remaining-mp state) (hash-ref state 'our-mp))
+
+(define (castable-spell-names state)
+  (let ([inactive-spell-names
+         (set-subtract (hash-keys spells)
+                       (hash-keys (hash-ref state 'current-spells)))])
+    (filter
+     (lambda (spell-name) ((cost spell-name) . <= . (remaining-mp state)))
+     inactive-spell-names)))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+;; TODO: try converting this to use structs (might need to use macros)
+;; (require struct-update)
+
+;; (struct game-state (our-hp our-mp our-armor boss-hp boss-dmg))
+;; (define-struct-updaters game-state)
+
+;; TODO: can we turn this into a macro?
+;; (define
+;; ;;   (show-state state)
+;; ;;   (format "state: our-hp ~a our-mp ~a our-armor ~a boss-hp ~a boss-dmg ~a"
+;; ;;           (game-state-our-hp state) (game-state-our-mp state)
+;; ;;           (game-state-our-armor state) (game-state-boss-hp state)
+;; ;;           (game-state-boss-dmg state)))
+
+;; (define initial-state (game-state 50 500 0 58 9))
+
+;; before, this took me like 30 minutes to write
+;; dead code preserved, just to have this as reference to look at later
+(define (apply-player-spell-and-boss-attack1 state spell-name)
+  (let ([state (pop-and-apply-effects state)])
+    (if (either-ko? state)
+        state
+        (let ([state (cast-spell spell-name state)])
+          (if (either-ko? state)
+              state
+              (boss-turn state))))))
