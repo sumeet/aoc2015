@@ -48,15 +48,17 @@
     (hash-set state 'current-spells current-spells)))
 
 (define (next-states state)
-  (map (lambda (spell-name) (full-turn spell-name state)) (castable-spell-names state)))
+  (let ([state ((curry if-not-ko-then pop-and-apply-effects) state)])
+    (map (lambda (spell-name) (rest-turn spell-name state)) (castable-spell-names state))))
 
-;; i think the above version had a bug in it, so then i wrote the bottom version
-(define (full-turn spell-name state)
+;; the part of the turn AFTER applying effects, reason being we need to apply
+;; effects before seeing which spells are castable:
+;; "effects can be started on the same turn they end"
+(define (rest-turn spell-name state)
   ((compose
     (curry if-not-ko-then boss-turn)
     (curry if-not-ko-then pop-and-apply-effects)
-    (curry if-not-ko-then (curry cast-spell spell-name))
-    (curry if-not-ko-then pop-and-apply-effects))
+    (curry if-not-ko-then (curry cast-spell spell-name)))
    state))
 
 (define (if-not-ko-then func state) (if (either-ko? state) state (func state)))
@@ -66,13 +68,16 @@
                 ;; filter out states where we die
                 [(states) (filter (compose not us-ko?) states)]
                 [(boss-ko-states not-yet-ko-states) (partition boss-ko? states)])
-    (append boss-ko-states ((compose flatten map) all-final-states-with-boss-ko not-yet-ko-states))))
+    (append boss-ko-states
+            ((compose flatten map)
+             all-final-states-with-boss-ko
+             not-yet-ko-states))))
 
-(define (least-mp-expenditures starting-state)
+(define (least-mp-expenditure starting-state)
   (let ([all-mps (map
                   (lambda (state) (hash-ref state 'total-mp-spent))
                   (all-final-states-with-boss-ko starting-state))])
-    (sort all-mps <)))
+    (foldl min +inf.f all-mps)))
 
 
 (define (either-ko? state) (or (us-ko? state) (boss-ko? state)))
@@ -89,9 +94,9 @@
 (define spells
   #hash[(magic-missile . [{(our-mp -53) (total-mp-spent +53) (boss-hp -4)}])
         (drain . [{(our-mp -73) (total-mp-spent +73) (boss-hp -2) (our-hp +2)}])
-        (shield . [{(our-mp -113) (total-mp-spent +113) (our-armor +7)} ; should last 6 turns
-                   {} {} {} {} {} {}
-                   {(our-armor -7)}])
+        ; should last 6 turns
+        (shield . [{(our-mp -113) (total-mp-spent +113) (our-armor +7)} 
+                   {} {} {} {} {} {} {(our-armor -7)}])
         (poison . [{(our-mp -173) (total-mp-spent +173)} ; should last 6 turns
                    {(boss-hp -3)}
                    {(boss-hp -3)}
@@ -115,9 +120,10 @@
   (foldl apply-state-change state changes))
 
 (define (boss-turn state)
-  (hash-update state 'our-hp
-               (lambda (cur-hp)
-                 ((cur-hp . - . (hash-ref state 'boss-dmg)) . + . (hash-ref state 'our-armor)))))
+  ;; damage from boss is at least 1
+  (let ([dmg
+         (max 1 ((hash-ref state 'boss-dmg) . - . (hash-ref state 'our-armor)))])
+    (hash-update state 'our-hp (lambda (cur-hp) (cur-hp . - . dmg)))))
 
 (define (cast-spell spell-name state)
   (let* ([spell-turns (hash-ref spells spell-name)]
