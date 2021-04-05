@@ -76,9 +76,17 @@ parseInstruction ('j' : 'i' : 'o' : ' ' : reg : ',' : ' ' : offset) = JumpIfOne 
 parseInstruction _ = Nothing
 
 run :: IO ()
-run = print $ runAll cpu
+run = part2
+
+part1 :: IO ()
+part1 = print $ b $ runAll cpu
   where
     cpu = initCPU $ map (fromJust . parseInstruction) $ lines input
+
+part2 :: IO ()
+part2 = print $ b $ runAll cpu {a = 1}
+  where
+    cpu = initCPU $ map (fromJust . parseInstruction) $ (lines input)
 
 sample :: String
 sample =
@@ -87,8 +95,9 @@ jio a, +2
 tpl a
 inc a|]
 
-input :: String 
-input = [r|jio a, +22
+input :: String
+input =
+  [r|jio a, +22
 inc a
 tpl a
 tpl a
