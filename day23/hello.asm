@@ -1,22 +1,18 @@
-BITS 64;
-; ----------------------------------------------------------------------------------------
-; Writes "Hello, World" to the console using only system calls. Runs on 64-bit Linux only.
-; To assemble and run:
+BITS 32;
 ;
-;     nasm -felf64 hello.asm && ld hello.o && ./a.out
-; ----------------------------------------------------------------------------------------
+; assemble and link with:
+; nasm -f elf printf-test.asm && gcc -m32 -o printf-test printf-test.o
+;
+section .text
+global main
+extern printf
 
-          global    _start
+main:
+  mov eax, 31337
+  push eax
+  push message
+  call printf
+  add esp, 8
+  ret
 
-          section   .text
-_start:   mov       rax, 1                  ; system call for write
-          mov       rdi, 1                  ; file handle 1 is stdout
-          mov       rsi, message            ; address of string to output
-          mov       rdx, 13                 ; number of bytes
-          syscall                           ; invoke operating system to do the write
-          mov       rax, 60                 ; system call for exit
-          xor       rdi, rdi                ; exit code 0
-          syscall                           ; invoke operating system to exit
-
-          section   .data
-message:  db        "Hello, World", 10      ; note the newline at the end
+message db "%d", 10, 0
