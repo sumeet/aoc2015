@@ -1,4 +1,3 @@
-BITS 32;
 section .text
 global main
 extern printf
@@ -13,16 +12,17 @@ i2:
   cmp eax, 1
   je i4
 i3:
-  mov ecx, 3
-  mul ecx
+  push 3
+  mul esp
+  add esp, 4
 i4:
   inc eax
   nop
 end:
-  push eax
-  push message
+  mov esi, eax
+  mov edi, message
+  mov eax, 0
   call printf
-  add esp, 8
   ret
 
 message db "%d", 10, 0

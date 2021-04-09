@@ -21,7 +21,7 @@ toNASM :: Int -> Instruction -> String
 toNASM n instruction = unlines [label n ++ ":", body n instruction]
 
 opRegister :: String
-opRegister = "r8"
+opRegister = "edx"
 
 body :: Int -> Instruction -> String
 body _ (Half reg) =
