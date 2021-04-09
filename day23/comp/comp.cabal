@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.3.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 
@@ -26,6 +26,8 @@ source-repository head
 library
   exposed-modules:
       Lib
+      Output
+      Structure
   other-modules:
       Paths_comp
   hs-source-dirs:

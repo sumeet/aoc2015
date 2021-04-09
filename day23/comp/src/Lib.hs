@@ -4,6 +4,8 @@
 module Lib where
 
 import Data.Maybe (fromJust)
+import Output
+import Structure (Instruction (..), Register (..))
 import Text.RawString.QQ (r)
 
 data CPU = CPU
@@ -16,17 +18,6 @@ data CPU = CPU
 
 initCPU :: [Instruction] -> CPU
 initCPU instructions = CPU {a = 0, b = 0, instructions, ptr = 0}
-
-data Register = A | B deriving (Show)
-
-data Instruction
-  = Half Register
-  | Triple Register
-  | Incr Register
-  | Jump Int
-  | JumpIfEven Register Int
-  | JumpIfOne Register Int
-  deriving (Show)
 
 modifyReg :: Register -> CPU -> (Int -> Int) -> CPU
 modifyReg reg cpu@CPU {a, b} changefunc = updateReg changefunc
@@ -76,7 +67,7 @@ parseInstruction ('j' : 'i' : 'o' : ' ' : reg : ',' : ' ' : offset) = JumpIfOne 
 parseInstruction _ = Nothing
 
 run :: IO ()
-run = part2
+run = putStr $ compileToNASM $ map (fromJust . parseInstruction) $ lines input
 
 part1 :: IO ()
 part1 = print $ b $ runAll cpu
@@ -86,7 +77,7 @@ part1 = print $ b $ runAll cpu
 part2 :: IO ()
 part2 = print $ b $ runAll cpu {a = 1}
   where
-    cpu = initCPU $ map (fromJust . parseInstruction) $ (lines input)
+    cpu = initCPU $ map (fromJust . parseInstruction) $ lines input
 
 sample :: String
 sample =
