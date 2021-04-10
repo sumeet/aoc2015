@@ -14,8 +14,8 @@ label :: Int -> String
 label n = "i" ++ show n
 
 toX86 :: Register -> String
-toX86 A = "ebx" -- eax and edx already used by operations
-toX86 B = "ecx"
+toX86 A = "r9"
+toX86 B = "r10"
 
 toNASM :: Int -> Instruction -> String
 toNASM n instruction = unlines [label n ++ ":", body n instruction]
@@ -27,8 +27,8 @@ body :: Int -> Instruction -> String
 body _ (Half reg) =
   unlines
     [ "mov eax, " ++ toX86 reg,
-      "mov edx, 2",
-      "div edx",
+      "mov " ++ opRegister ++ ", 2",
+      "div " ++ opRegister,
       "mov "
         ++ toX86 reg
         ++ ", eax"
@@ -36,14 +36,14 @@ body _ (Half reg) =
 body _ (Triple reg) =
   unlines
     [ "mov eax, " ++ toX86 reg,
-      "mov edx, 3",
-      "mul edx",
+      "mov " ++ opRegister ++ ", 3",
+      "mul " ++ opRegister,
       "mov "
         ++ toX86 reg
         ++ ", eax"
     ]
 body _ (Incr reg) = "inc " ++ toX86 reg
-body n (Jump offset) = "jmp " ++ label (n + offset - 1)
+body n (Jump offset) = "jmp " ++ label (n + offset)
 body n (JumpIfEven reg offset) =
   -- from https://stackoverflow.com/a/49116885/149987
   -- the test instruction
@@ -56,34 +56,42 @@ body n (JumpIfEven reg offset) =
   -- JZ  target    ; jump if even = lowest bit clear = zero
   unlines
     [ "test " ++ toX86 reg ++ ", 1",
-      "jz " ++ label (n + offset - 1)
+      "jz " ++ label (n + offset)
     ]
 body n (JumpIfOne reg offset) =
   unlines
     [ "cmp " ++ toX86 reg ++ ", 1",
-      "je " ++ label (n + offset - 1)
+      "je " ++ label (n + offset)
     ]
 
 prelude :: String
 prelude =
-  [r|BITS 32;
-section .text
+  [r|section .text
 global main
 extern printf
 
 main:
-  mov eax, 0
-  mov ebx, 0
+  mov |]
+    ++ toX86 A
+    ++ [r|, 0
+  mov |]
+    ++ toX86 B
+    ++ [r|, 0
 |]
 
+-- TODO: i48 is hardcoded hax
 footer :: String
 footer =
-  [r|end:
-  push eax
-  push message
+  [r|
+i48:
+end:
+  mov esi, |]
+    ++ toX86 B
+    ++ [r|
+  mov edi, message
+  mov eax, 0
   call printf
-  add esp, 8
   ret
 
-  message db "%d", 10, 0
+message db "%d", 10, 0
 |]
