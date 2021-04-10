@@ -26,24 +26,24 @@ opRegister = "r8"
 instToX86 :: Int -> Instruction -> String
 instToX86 _ (Half reg) =
   unlines
-    [ "mov eax, " ++ regToX86 reg,
-      "mov edx, 0",
+    [ "mov rax, " ++ regToX86 reg,
+      "mov rdx, 0",
       "mov "
         ++ opRegister
         ++ ", 2",
       "div " ++ opRegister,
       "mov "
         ++ regToX86 reg
-        ++ ", eax"
+        ++ ", rax"
     ]
 instToX86 _ (Triple reg) =
   unlines
-    [ "mov eax, " ++ regToX86 reg,
+    [ "mov rax, " ++ regToX86 reg,
       "mov " ++ opRegister ++ ", 3",
       "mul " ++ opRegister,
       "mov "
         ++ regToX86 reg
-        ++ ", eax"
+        ++ ", rax"
     ]
 instToX86 _ (Incr reg) = "inc " ++ regToX86 reg
 instToX86 n (Jump offset) = "jmp " ++ label (n + offset)
@@ -88,11 +88,11 @@ footer =
   [r|
 i48:
 end:
-  mov esi, |]
+  mov rsi, |]
     ++ regToX86 B
     ++ [r|
-  mov edi, message
-  mov eax, 0
+  mov rdi, message
+  mov rax, 0
   call printf
   ret
 
