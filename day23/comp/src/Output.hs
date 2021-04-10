@@ -13,38 +13,41 @@ compileToNASM instructions = prelude ++ inner ++ footer
 label :: Int -> String
 label n = "i" ++ show n
 
-toX86 :: Register -> String
-toX86 A = "r9"
-toX86 B = "r10"
+regToX86 :: Register -> String
+regToX86 A = "r9"
+regToX86 B = "r10"
 
 toNASM :: Int -> Instruction -> String
-toNASM n instruction = unlines [label n ++ ":", body n instruction]
+toNASM n instruction = unlines [label n ++ ":", instToX86 n instruction]
 
 opRegister :: String
 opRegister = "r8"
 
-body :: Int -> Instruction -> String
-body _ (Half reg) =
+instToX86 :: Int -> Instruction -> String
+instToX86 _ (Half reg) =
   unlines
-    [ "mov eax, " ++ toX86 reg,
-      "mov " ++ opRegister ++ ", 2",
+    [ "mov eax, " ++ regToX86 reg,
+      "mov edx, 0",
+      "mov "
+        ++ opRegister
+        ++ ", 2",
       "div " ++ opRegister,
       "mov "
-        ++ toX86 reg
+        ++ regToX86 reg
         ++ ", eax"
     ]
-body _ (Triple reg) =
+instToX86 _ (Triple reg) =
   unlines
-    [ "mov eax, " ++ toX86 reg,
+    [ "mov eax, " ++ regToX86 reg,
       "mov " ++ opRegister ++ ", 3",
       "mul " ++ opRegister,
       "mov "
-        ++ toX86 reg
+        ++ regToX86 reg
         ++ ", eax"
     ]
-body _ (Incr reg) = "inc " ++ toX86 reg
-body n (Jump offset) = "jmp " ++ label (n + offset)
-body n (JumpIfEven reg offset) =
+instToX86 _ (Incr reg) = "inc " ++ regToX86 reg
+instToX86 n (Jump offset) = "jmp " ++ label (n + offset)
+instToX86 n (JumpIfEven reg offset) =
   -- from https://stackoverflow.com/a/49116885/149987
   -- the test instruction
   --
@@ -55,12 +58,12 @@ body n (JumpIfEven reg offset) =
   -- JNZ target    ; jump if odd  = lowest bit set
   -- JZ  target    ; jump if even = lowest bit clear = zero
   unlines
-    [ "test " ++ toX86 reg ++ ", 1",
+    [ "test " ++ regToX86 reg ++ ", 1",
       "jz " ++ label (n + offset)
     ]
-body n (JumpIfOne reg offset) =
+instToX86 n (JumpIfOne reg offset) =
   unlines
-    [ "cmp " ++ toX86 reg ++ ", 1",
+    [ "cmp " ++ regToX86 reg ++ ", 1",
       "je " ++ label (n + offset)
     ]
 
@@ -72,10 +75,10 @@ extern printf
 
 main:
   mov |]
-    ++ toX86 A
+    ++ regToX86 A
     ++ [r|, 0
   mov |]
-    ++ toX86 B
+    ++ regToX86 B
     ++ [r|, 0
 |]
 
@@ -86,7 +89,7 @@ footer =
 i48:
 end:
   mov esi, |]
-    ++ toX86 B
+    ++ regToX86 B
     ++ [r|
   mov edi, message
   mov eax, 0

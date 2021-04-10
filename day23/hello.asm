@@ -14,44 +14,44 @@ i1:
 inc r9
 
 i2:
-mov eax, r9
+mov rax, r9
 mov r8, 3
 mul r8
-mov r9, eax
+mov r9, rax
 
 
 i3:
-mov eax, r9
+mov rax, r9
 mov r8, 3
 mul r8
-mov r9, eax
+mov r9, rax
 
 
 i4:
-mov eax, r9
+mov rax, r9
 mov r8, 3
 mul r8
-mov r9, eax
+mov r9, rax
 
 
 i5:
 inc r9
 
 i6:
-mov eax, r9
+mov rax, r9
 mov r8, 3
 mul r8
-mov r9, eax
+mov r9, rax
 
 
 i7:
 inc r9
 
 i8:
-mov eax, r9
+mov rax, r9
 mov r8, 3
 mul r8
-mov r9, eax
+mov r9, rax
 
 
 i9:
@@ -61,10 +61,10 @@ i10:
 inc r9
 
 i11:
-mov eax, r9
+mov rax, r9
 mov r8, 3
 mul r8
-mov r9, eax
+mov r9, rax
 
 
 i12:
@@ -74,10 +74,10 @@ i13:
 inc r9
 
 i14:
-mov eax, r9
+mov rax, r9
 mov r8, 3
 mul r8
-mov r9, eax
+mov r9, rax
 
 
 i15:
@@ -87,10 +87,10 @@ i16:
 inc r9
 
 i17:
-mov eax, r9
+mov rax, r9
 mov r8, 3
 mul r8
-mov r9, eax
+mov r9, rax
 
 
 i18:
@@ -100,41 +100,41 @@ i19:
 inc r9
 
 i20:
-mov eax, r9
+mov rax, r9
 mov r8, 3
 mul r8
-mov r9, eax
+mov r9, rax
 
 
 i21:
 jmp i40
 
 i22:
-mov eax, r9
+mov rax, r9
 mov r8, 3
 mul r8
-mov r9, eax
+mov r9, rax
 
 
 i23:
-mov eax, r9
+mov rax, r9
 mov r8, 3
 mul r8
-mov r9, eax
+mov r9, rax
 
 
 i24:
-mov eax, r9
+mov rax, r9
 mov r8, 3
 mul r8
-mov r9, eax
+mov r9, rax
 
 
 i25:
-mov eax, r9
+mov rax, r9
 mov r8, 3
 mul r8
-mov r9, eax
+mov r9, rax
 
 
 i26:
@@ -144,20 +144,20 @@ i27:
 inc r9
 
 i28:
-mov eax, r9
+mov rax, r9
 mov r8, 3
 mul r8
-mov r9, eax
+mov r9, rax
 
 
 i29:
 inc r9
 
 i30:
-mov eax, r9
+mov rax, r9
 mov r8, 3
 mul r8
-mov r9, eax
+mov r9, rax
 
 
 i31:
@@ -167,10 +167,10 @@ i32:
 inc r9
 
 i33:
-mov eax, r9
+mov rax, r9
 mov r8, 3
 mul r8
-mov r9, eax
+mov r9, rax
 
 
 i34:
@@ -180,27 +180,27 @@ i35:
 inc r9
 
 i36:
-mov eax, r9
+mov rax, r9
 mov r8, 3
 mul r8
-mov r9, eax
+mov r9, rax
 
 
 i37:
 inc r9
 
 i38:
-mov eax, r9
+mov rax, r9
 mov r8, 3
 mul r8
-mov r9, eax
+mov r9, rax
 
 
 i39:
-mov eax, r9
+mov rax, r9
 mov r8, 3
 mul r8
-mov r9, eax
+mov r9, rax
 
 
 i40:
@@ -217,10 +217,10 @@ jz i46
 
 
 i43:
-mov eax, r9
+mov rax, r9
 mov r8, 3
 mul r8
-mov r9, eax
+mov r9, rax
 
 
 i44:
@@ -230,10 +230,11 @@ i45:
 jmp i47
 
 i46:
-mov eax, r9
+mov rax, r9
+mov rdx, 0
 mov r8, 2
 div r8
-mov r9, eax
+mov r9, rax
 
 
 i47:
@@ -242,9 +243,9 @@ jmp i40
 
 i48:
 end:
-  mov esi, r10
-  mov edi, message
-  mov eax, 0
+  mov rsi, r10
+  mov rdi, message
+  mov rax, 0
   call printf
   ret
 
