@@ -205,7 +205,7 @@ mov r9, rax
 
 i40:
 cmp r9, 1
-je i48
+je end
 
 
 i41:
@@ -241,7 +241,6 @@ i47:
 jmp i40
 
 
-i48:
 end:
   mov rsi, r10
   mov rdi, message
