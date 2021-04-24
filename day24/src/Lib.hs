@@ -2,13 +2,25 @@
 
 module Lib where
 
+import Combinatorics (variate)
 import Text.RawString.QQ (r)
 
 run :: IO ()
-run = print input
+run = print $ minimum $ map quantumEntanglement $ passengerCandidates input
+
+quantumEntanglement :: [Int] -> Int
+quantumEntanglement = product
+
+passengerCandidates :: [Int] -> [[Int]]
+passengerCandidates allPkgs =
+  head $
+    filter (not . null) $
+      map (\numPkgs -> filter hasCorrectWeight $ variate numPkgs allPkgs) [1 ..]
+  where
+    hasCorrectWeight pkgs = sum pkgs == sum allPkgs `div` 3
 
 sample :: [Int]
-sample = [1, 2, 3, 4, 5, 7, 11]
+sample = [1 .. 5] ++ [7 .. 11]
 
 input :: [Int]
 input =

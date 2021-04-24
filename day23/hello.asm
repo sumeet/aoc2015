@@ -3,7 +3,7 @@ global main
 extern printf
 
 main:
-  mov r9, 0
+  mov r9, 1
   mov r10, 0
 i0:
 cmp r9, 1
