@@ -2,22 +2,28 @@
 
 module Lib where
 
-import Combinatorics (variate)
+import Combinatorics (tuples)
 import Text.RawString.QQ (r)
 
 run :: IO ()
-run = print $ minimum $ map quantumEntanglement $ passengerCandidates input
+run = part2
+
+part1 :: IO ()
+part1 = print $ minimum $ map quantumEntanglement $ passengerCandidates input 3
+
+part2 :: IO ()
+part2 = print $ minimum $ map quantumEntanglement $ passengerCandidates input 4
 
 quantumEntanglement :: [Int] -> Int
 quantumEntanglement = product
 
-passengerCandidates :: [Int] -> [[Int]]
-passengerCandidates allPkgs =
+passengerCandidates :: [Int] -> Int -> [[Int]]
+passengerCandidates allPkgs numCompartments =
   head $
     filter (not . null) $
-      map (\numPkgs -> filter hasCorrectWeight $ variate numPkgs allPkgs) [1 ..]
+      map (\numPkgs -> filter hasCorrectWeight $ tuples numPkgs allPkgs) [1 ..]
   where
-    hasCorrectWeight pkgs = sum pkgs == sum allPkgs `div` 3
+    hasCorrectWeight pkgs = sum pkgs == sum allPkgs `div` numCompartments
 
 sample :: [Int]
 sample = [1 .. 5] ++ [7 .. 11]
